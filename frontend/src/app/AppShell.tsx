@@ -78,24 +78,60 @@ function WorkspaceSwitcher({ workspaces, current }: { workspaces: Workspace[]; c
   const items: Record<string, string> = {};
   for (const workspace of workspaces) items[workspace.login] = workspace.login;
   return (
-    <div className="flex flex-col gap-1">
-      <Select
-        aria-label="Workspace"
-        value={current}
-        items={items}
-        onValueChange={(value) => {
-          if (value) navigate(workspacePath(String(value)));
-        }}
-      />
+    <Sidebar.Group>
+      <Sidebar.GroupLabel>Workspace</Sidebar.GroupLabel>
+      <div className="px-1 pb-1">
+        <Select
+          aria-label="Workspace"
+          className="w-full"
+          value={current}
+          items={items}
+          onValueChange={(value) => {
+            if (value) navigate(workspacePath(String(value)));
+          }}
+        />
+      </div>
+      <Sidebar.Menu>
+        <Sidebar.MenuButton
+          icon={PlusIcon}
+          tooltip="Add GitHub account"
+          onClick={() => window.location.assign(INSTALL_URL)}
+        >
+          Add GitHub account
+        </Sidebar.MenuButton>
+      </Sidebar.Menu>
+    </Sidebar.Group>
+  );
+}
+
+function UserRow({ login, avatarUrl }: { login: string; avatarUrl: string }) {
+  const logout = useLogout();
+  return (
+    <div className="flex w-full min-w-0 items-center gap-2 px-2">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" className="size-6 shrink-0 rounded-full" />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-kumo-recessed text-xs font-medium text-kumo-default"
+        >
+          {login.slice(0, 1).toUpperCase()}
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <Text size="sm" truncate>
+          {login}
+        </Text>
+      </div>
       <Button
         variant="ghost"
+        shape="square"
         size="sm"
-        className="w-full justify-start"
-        icon={<PlusIcon />}
-        onClick={() => window.location.assign(INSTALL_URL)}
-      >
-        Add GitHub account
-      </Button>
+        aria-label="Sign out"
+        icon={<SignOutIcon />}
+        loading={logout.isPending}
+        onClick={() => logout.mutate()}
+      />
     </div>
   );
 }
@@ -103,7 +139,6 @@ function WorkspaceSwitcher({ workspaces, current }: { workspaces: Workspace[]; c
 export function AppShell() {
   const me = useMe();
   const workspaces = useWorkspaces();
-  const logout = useLogout();
   const { pathname } = useLocation();
   const slug = useWorkspaceSlug();
 
@@ -155,14 +190,18 @@ export function AppShell() {
   ];
 
   return (
-    <Sidebar.Provider defaultOpen contained className="h-screen">
+    <Sidebar.Provider defaultOpen contained className="h-screen min-h-0!">
       <Sidebar>
         <Sidebar.Header>
-          <Brand />
+          <div className="flex w-full items-center justify-between gap-2">
+            <Brand />
+            <Sidebar.Trigger />
+          </div>
         </Sidebar.Header>
         <Sidebar.Content>
           <WorkspaceSwitcher workspaces={list} current={current?.login ?? ""} />
           <Sidebar.Group>
+            <Sidebar.GroupLabel>Manage</Sidebar.GroupLabel>
             <Sidebar.Menu>
               {nav.map((item) => (
                 <Sidebar.MenuButton
@@ -170,6 +209,7 @@ export function AppShell() {
                   icon={item.icon}
                   href={item.href}
                   active={item.active}
+                  tooltip={item.label}
                 >
                   {item.label}
                 </Sidebar.MenuButton>
@@ -178,20 +218,7 @@ export function AppShell() {
           </Sidebar.Group>
         </Sidebar.Content>
         <Sidebar.Footer>
-          <div className="flex items-center justify-between gap-2">
-            <Text variant="secondary" size="sm" truncate>
-              {me.data.login}
-            </Text>
-            <Button
-              variant="ghost"
-              shape="square"
-              size="sm"
-              aria-label="Sign out"
-              icon={<SignOutIcon />}
-              loading={logout.isPending}
-              onClick={() => logout.mutate()}
-            />
-          </div>
+          <UserRow login={me.data.login} avatarUrl={me.data.avatar_url} />
         </Sidebar.Footer>
       </Sidebar>
       <main className="h-full min-w-0 flex-1 overflow-y-auto px-5 py-6 md:px-10 md:py-10">
