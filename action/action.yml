@@ -1,0 +1,35 @@
+name: Aethos index
+description: Build the Aethos code index (symbols, dependency graph and BGE embeddings) for this repository.
+inputs:
+  api-url:
+    description: Base URL of your Aethos deployment, for example https://aethos.example.com
+    required: true
+  embed:
+    description: Embed code chunks with BAAI bge-base-en-v1.5 (runs on the runner, no account needed)
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Install indexer dependencies
+      shell: bash
+      run: python -m pip install --quiet -r "${{ github.action_path }}/../indexer/requirements.txt"
+    - name: Cache embedding model
+      if: inputs.embed == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/fastembed
+        key: aethos-bge-base-en-v1.5
+    - name: Build and upload index
+      shell: bash
+      env:
+        PYTHONPATH: ${{ github.action_path }}/../indexer:${{ github.action_path }}/../backend
+        FASTEMBED_CACHE_PATH: ${{ runner.temp }}/fastembed
+        AETHOS_EMBED: ${{ inputs.embed }}
+      run: |
+        flags=""
+        if [ "$AETHOS_EMBED" != "true" ]; then flags="--no-embed"; fi
+        python -m aethos_indexer --api-url "${{ inputs.api-url }}" --root "${{ github.workspace }}" $flags

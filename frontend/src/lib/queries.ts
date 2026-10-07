@@ -1,0 +1,62 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, ApiError, type ReviewQuery, type SettingsPatch } from "./api";
+
+export const keys = {
+  me: ["me"] as const,
+  overview: (days: number) => ["overview", days] as const,
+  repos: ["repos"] as const,
+  repo: (id: number) => ["repo", id] as const,
+  reviews: (query: ReviewQuery) => ["reviews", query] as const,
+  review: (id: number) => ["review", id] as const,
+};
+
+export function useMe() {
+  return useQuery({
+    queryKey: keys.me,
+    queryFn: api.me,
+    retry: (count, error) => !(error instanceof ApiError && error.status === 401) && count < 2,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useOverview(days: number) {
+  return useQuery({ queryKey: keys.overview(days), queryFn: () => api.overview(days) });
+}
+
+export function useRepos() {
+  return useQuery({ queryKey: keys.repos, queryFn: api.repos });
+}
+
+export function useRepo(id: number) {
+  return useQuery({ queryKey: keys.repo(id), queryFn: () => api.repo(id), enabled: id > 0 });
+}
+
+export function useReviews(query: ReviewQuery = {}) {
+  return useQuery({ queryKey: keys.reviews(query), queryFn: () => api.reviews(query) });
+}
+
+export function useReview(id: number) {
+  return useQuery({ queryKey: keys.review(id), queryFn: () => api.review(id), enabled: id > 0 });
+}
+
+export function useUpdateSettings(id: number) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: SettingsPatch) => api.updateSettings(id, patch),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.repo(id) });
+      void client.invalidateQueries({ queryKey: keys.repos });
+    },
+  });
+}
+
+export function useLogout() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: api.logout,
+    onSuccess: () => {
+      client.clear();
+      window.location.assign("/");
+    },
+  });
+}

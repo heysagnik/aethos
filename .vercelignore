@@ -1,0 +1,10 @@
+.venv
+**/node_modules
+indexer
+action
+eval
+docs
+backend/tests
+frontend/src
+frontend/openapi.json
+*.sqlite3
