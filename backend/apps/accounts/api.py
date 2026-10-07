@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 api = NinjaAPI(urls_namespace="auth", docs_url=None, openapi_url=None)
 
 STATE_KEY = "oauth_state"
+# Set by /api/github/install. With "request user authorization during installation" on, GitHub
+# redirects here (the Callback URL) after installing, carrying the install state.
+INSTALL_STATE_KEY = "install_state"
 
 
 class MeOut(Schema):
@@ -37,8 +40,10 @@ def login_view(request: HttpRequest) -> HttpResponseRedirect:
 
 @api.get("/callback", auth=None, url_name="callback")
 def callback(request: HttpRequest, code: str = "", state: str = "") -> HttpResponseRedirect:
-    expected = request.session.pop(STATE_KEY, None)
-    if not code or not expected or not secrets.compare_digest(expected, state):
+    expected = [
+        value for key in (STATE_KEY, INSTALL_STATE_KEY) if (value := request.session.pop(key, None))
+    ]
+    if not code or not any(secrets.compare_digest(value, state) for value in expected):
         return HttpResponseRedirect(f"{settings.FRONTEND_URL}/?error=login_failed")
     try:
         services.complete_login(request, code)

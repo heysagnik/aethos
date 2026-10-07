@@ -139,3 +139,19 @@ def test_logout_requires_csrf_and_clears_session(client, user):
     ok = csrf_client.post("/api/auth/logout", HTTP_X_CSRFTOKEN=token)
     assert ok.status_code == 200
     assert csrf_client.get("/api/auth/me").status_code == 401
+
+
+def test_install_state_is_accepted_at_the_callback_url(client, db, monkeypatch):
+    from apps.accounts import services
+
+    monkeypatch.setattr(services, "complete_login", lambda request, code: None)
+    client.get("/api/github/install")
+    state = client.session["install_state"]
+    good = client.get(
+        "/api/auth/callback",
+        {"code": "x", "state": state, "installation_id": "1", "setup_action": "install"},
+    )
+    assert good["Location"].endswith("/app")
+    assert "install_state" not in client.session
+    replay = client.get("/api/auth/callback", {"code": "x", "state": state})
+    assert "error=login_failed" in replay["Location"]
