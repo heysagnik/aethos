@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd frontend && pnpm install --frozen-lockfile",
-  "buildCommand": "cd frontend && pnpm build",
+  "framework": null,
+  "installCommand": "cd frontend && npx --yes pnpm@9.15.1 install --frozen-lockfile && cd .. && uv sync --frozen --no-dev",
+  "buildCommand": "cd frontend && npx --yes pnpm@9.15.1 build",
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.py": { "maxDuration": 60, "includeFiles": "backend/**" }
