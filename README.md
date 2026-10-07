@@ -6,7 +6,7 @@
 
 **Know if a pull request is ready to merge.**
 
-Mention `@aethos` on a PR. Get a verdict, inline suggestions, and the bottlenecks worth fixing first.
+Mention `@aethos-agent` on a PR. Get a verdict, inline suggestions, and the bottlenecks worth fixing first.
 
 [Live app](https://aethos-mu.vercel.app) · [Setup](SETUP.md) · [Architecture](docs/ARCHITECTURE.md) · [Plan](PLAN.md)
 
