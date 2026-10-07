@@ -96,7 +96,9 @@ GITHUB_CLIENT_SECRET = env("GITHUB_CLIENT_SECRET", "")
 
 # "qstash" in production; "inline" runs steps synchronously (local dev and tests only).
 QUEUE_MODE = env("QUEUE_MODE", "qstash")
-QSTASH_URL = env("QSTASH_URL", "")  # regional endpoint, for example https://qstash-us-east-1.upstash.io
+QSTASH_URL = env(
+    "QSTASH_URL", ""
+)  # regional endpoint, for example https://qstash-us-east-1.upstash.io
 QSTASH_TOKEN = env("QSTASH_TOKEN", "")
 QSTASH_CURRENT_SIGNING_KEY = env("QSTASH_CURRENT_SIGNING_KEY", "")
 QSTASH_NEXT_SIGNING_KEY = env("QSTASH_NEXT_SIGNING_KEY", "")
