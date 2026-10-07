@@ -38,7 +38,7 @@ def enqueue(step: str, payload: dict[str, Any], dedup_key: str) -> None:
 
         pipeline.run_step(step, payload)
         return
-    client = QStash(settings.QSTASH_TOKEN)
+    client = QStash(settings.QSTASH_TOKEN, base_url=settings.QSTASH_URL or None)
     client.message.publish_json(
         url=f"{settings.APP_BASE_URL}/api/steps/{step}",
         body=payload,
