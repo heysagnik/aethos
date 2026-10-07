@@ -1,52 +1,85 @@
+<div align="center">
+
+<img src="frontend/public/aethos-icon.svg" alt="Aethos" width="96" height="96" />
+
 # Aethos
 
-A GitHub App that reviews pull requests when you mention it. Comment `@aethos` on a PR and it replies with a **merge-readiness verdict**, inline **suggestions**, and the **bottlenecks** worth fixing first. It reads an index of your codebase instead of the whole repository, so reviews stay fast and cheap.
+**Know if a pull request is ready to merge.**
 
-- Landing page with a **Sign in with GitHub** button, then a minimal dashboard built with shadcn/ui: stats, repositories, reviews, and a context-pack inspector.
-- Django (django-ninja) API on Vercel, Neon Postgres (+ pgvector), QStash for step delivery, NVIDIA NIM (`nemotron-3-super-120b-a12b`) for the LLM, NVIDIA NIM (`nemotron-3-embed-1b`) embeddings computed while indexing.
-- Never approves, merges or edits code. Reviews are comment-only.
-- Repositories on the dashboard are listed most recently reviewed first.
+Mention `@aethos` on a PR. Get a verdict, inline suggestions, and the bottlenecks worth fixing first.
 
-**Start here:** [SETUP.md](SETUP.md) lists every account, key and setting you need.
-Design and phase plan: [PLAN.md](PLAN.md). Rules for coding agents working on this repo: [AGENT.md](AGENT.md). Frontend design notes: [docs/DESIGN.md](docs/DESIGN.md).
+[Live app](https://aethos-mu.vercel.app) · [Setup](SETUP.md) · [Architecture](docs/ARCHITECTURE.md) · [Plan](PLAN.md)
 
-## How a review works
+![Python](https://img.shields.io/badge/python-3.12-3776ab?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/django-5-092e20?logo=django&logoColor=white)
+![React](https://img.shields.io/badge/react-19-61dafb?logo=react&logoColor=black)
+![Tests](https://img.shields.io/badge/tests-pytest%20%2B%20vitest-brightgreen)
+
+</div>
+
+---
+
+## Why
+
+Most AI reviewers read the whole repository or just the diff. Aethos indexes your codebase once, then gives the model only what matters: the changed code, its callers and callees, similar existing code and the related tests. Reviews stay fast and cheap, and the verdict is computed in code, so it is explainable.
+
+## Features
+
+- **Merge-readiness verdict**: `ready`, `ready with suggestions` or `not ready`, with every reason listed.
+- **Inline suggestions** you can apply in one click, plus the performance bottlenecks to fix first.
+- **Code index** of symbols, calls, imports and tests (tree-sitter for Python, JavaScript and TypeScript), refreshed on every push.
+- **Semantic search** over your code with NVIDIA `nemotron-3-embed-1b`, falling back to keyword matching.
+- **Dashboard** with stats, repositories (most recently reviewed first), reviews and a context-pack inspector.
+- **Comment-only**: never approves, merges or edits your code.
+
+## How it works
 
 ```
-@aethos comment ─▶ webhook (verify, dedupe) ─▶ QStash ─▶ triage ─▶ pack ─▶ review ─▶ post
-                                                         skip       index    NIM      one GitHub
-                                                         bots,      lookup   JSON     review with
-                                                         locks,     (no LLM) output   inline comments
-                                                         docs
+@aethos ─▶ webhook ─▶ QStash ─▶ triage ─▶ pack ─▶ review ─▶ post
+                                 skip      index    one NIM    one GitHub
+                                 bots,     lookup   JSON       review with
+                                 docs      (no LLM) call       inline comments
 ```
 
 1. **Triage** skips bot PRs, lockfile-only, docs-only and oversized changes at zero LLM cost.
-2. **Pack** builds a token-budgeted context: the diff, the enclosing code, callers and callees from the dependency graph, similar existing code (nearest neighbours of the changed code by stored NVIDIA embedding, or keyword matching when there are none), related tests and a repository map. No LLM is involved; the pack is stored so you can inspect it.
-3. **Review** makes one NVIDIA NIM call that returns structured JSON (findings with severity and confidence).
-4. **Post** computes the verdict *in code* from the findings plus CI status, merge conflicts, draft state, test changes and how many other symbols depend on the changed code, then posts a single GitHub review.
+2. **Pack** builds a token-budgeted context from the index. No LLM is involved, and the pack is stored so you can inspect it.
+3. **Review** makes a single `nvidia/nemotron-3-super-120b-a12b` call that returns structured findings.
+4. **Post** computes the verdict from the findings plus CI status, conflicts, draft state and test changes, then posts one GitHub review.
 
-The index is built by the server (`backend/apps/indexing/`): it downloads the default branch, parses it with tree-sitter (Python, JavaScript, TypeScript), and embeds the code chunks with NVIDIA NIM in queued steps. It runs when a repository is installed, on every push to the default branch, and from the **Re-index** button. Only files whose content hash changed are replaced.
+Indexing runs on the server: it downloads the default branch, parses it, and embeds the chunks in short queue steps. It starts when you install the app, on every push to the default branch, and from the **Re-index** button.
 
-## Repository layout
+## Stack
 
-```
-backend/core/       pure Python: diff parsing, triage, verdict, pack building, prompts, rendering
-backend/apps/       Django apps: accounts, github, repos, indexing, reviews, dashboard
-frontend/           Vite + React + shadcn/ui (Base UI) dashboard and landing page; the mascot is `frontend/public/aethos-mascot.svg`
-api/index.py        Vercel entry point
-```
+| | |
+|---|---|
+| API | Django + django-ninja on Vercel |
+| Database | Neon Postgres with pgvector |
+| Queue | Upstash QStash |
+| Models | NVIDIA NIM: `nemotron-3-super-120b-a12b` (reviews), `nemotron-3-embed-1b` (embeddings) |
+| Frontend | Vite, React, TypeScript, Tailwind v4, shadcn/ui on Base UI |
 
-## Commands
+## Quick start
 
 ```bash
-make check          # everything CI runs
-make dev-backend    # Django on :8000
-make dev-frontend   # Vite on :5173
-uv run python backend/manage.py compare --repo owner/name --pr 12   # Aethos vs baseline
+git clone https://github.com/heysagnik/aethos && cd aethos
+cp .env.example .env              # fill in your keys, see SETUP.md
+uv sync && cd frontend && pnpm install && cd ..
+
+make dev-backend                  # Django on :8000
+make dev-frontend                 # Vite on :5173
+```
+
+Open http://localhost:5173 and sign in with GitHub. [SETUP.md](SETUP.md) lists every account, key and GitHub App setting you need.
+
+## Development
+
+```bash
+make check                        # lint, types, tests, migrations, frontend checks
+uv run python backend/manage.py compare --repo owner/name --pr 12   # Aethos vs. baseline
 uv run python backend/manage.py show_review 42                      # inspect a review
 ```
 
-Without `make` (for example on Windows), run the same checks directly:
+No `make` (Windows)? Run the same checks directly:
 
 ```bash
 uv run ruff check . && uv run ruff format --check .
@@ -55,6 +88,18 @@ DJANGO_SETTINGS_MODULE=aethos.settings.test uv run pytest
 cd frontend && pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
+## Project layout
+
+```
+backend/core/       pure Python: diff parsing, triage, verdict, packing, prompts
+backend/apps/       Django apps: accounts, github, repos, indexing, reviews, dashboard
+frontend/           React dashboard and landing page
+api/index.py        Vercel entry point
+docs/               architecture and design notes
+```
+
 ## Status
 
-Phase 1 (install flow, `@aethos` reviews, index, context packs, verdict, dashboard, baseline comparison) is implemented and covered by tests (Python: pytest, ruff, mypy; frontend: vitest, tsc, eslint). It is deployed on Vercel. The NVIDIA NIM calls (reviews and embeddings) and server-side indexing have only been tested against mocks so far; see section 6 of [SETUP.md](SETUP.md) for what to check on the first real run. Phase 2 (threads, memory, feedback learning, verifier, delta re-review, evaluation) is planned in [PLAN.md](PLAN.md).
+Phase 1 (install flow, reviews, index, context packs, verdict, dashboard, baseline comparison) is built and tested, and the app is deployed. The NVIDIA calls and server-side indexing have only been tested against mocks so far; [SETUP.md](SETUP.md) lists what to check on the first real run. Threads, memory, feedback learning and delta re-review are planned in [PLAN.md](PLAN.md).
+
+Contributing with an AI agent? Read [AGENT.md](AGENT.md) first.
