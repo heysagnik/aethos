@@ -20,7 +20,7 @@ import { useReview } from "../lib/queries";
 
 function FindingCard({ finding }: { finding: Finding }) {
   return (
-    <Surface className="flex flex-col gap-2 p-4">
+    <Surface className="flex flex-col gap-2 px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <SeverityBadge severity={finding.severity} />
         <Badge variant="outline">{finding.category}</Badge>
@@ -80,7 +80,7 @@ function PackInspector({ review }: { review: ReviewDetail }) {
   if (!pack) return <Text variant="secondary">No context pack was built for this review.</Text>;
   const groups = groupBySection(pack.items);
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gapx-4 py-3">
       <Meter
         label="Context used"
         value={pack.tokensUsed}
@@ -197,7 +197,7 @@ export function ReviewDetailPage() {
             }
           />
           <div className="flex flex-col gap-6">
-            <Surface className="flex flex-col gap-3 p-4">
+            <Surface className="flex flex-col gap-3 px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 <VerdictBadge verdict={data.verdict} />
                 <StatusBadge status={data.status} />
@@ -233,7 +233,7 @@ export function ReviewDetailPage() {
 
             <section className="flex flex-col gap-3">
               <Text variant="heading">Context pack</Text>
-              <Surface className="p-4">
+              <Surface className="px-4 py-3">
                 <PackInspector review={data} />
               </Surface>
             </section>

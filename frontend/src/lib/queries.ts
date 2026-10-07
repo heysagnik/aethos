@@ -3,8 +3,9 @@ import { api, ApiError, type ReviewQuery, type SettingsPatch } from "./api";
 
 export const keys = {
   me: ["me"] as const,
-  overview: (days: number) => ["overview", days] as const,
-  repos: ["repos"] as const,
+  workspaces: ["workspaces"] as const,
+  overview: (workspace: string, days: number) => ["overview", workspace, days] as const,
+  repos: (workspace: string) => ["repos", workspace] as const,
   repo: (id: number) => ["repo", id] as const,
   reviews: (query: ReviewQuery) => ["reviews", query] as const,
   review: (id: number) => ["review", id] as const,
@@ -19,12 +20,23 @@ export function useMe() {
   });
 }
 
-export function useOverview(days: number) {
-  return useQuery({ queryKey: keys.overview(days), queryFn: () => api.overview(days) });
+export function useWorkspaces() {
+  return useQuery({
+    queryKey: keys.workspaces,
+    queryFn: api.workspaces,
+    retry: (count, error) => !(error instanceof ApiError && error.status === 401) && count < 2,
+  });
 }
 
-export function useRepos() {
-  return useQuery({ queryKey: keys.repos, queryFn: api.repos });
+export function useOverview(workspace: string, days: number) {
+  return useQuery({
+    queryKey: keys.overview(workspace, days),
+    queryFn: () => api.overview(workspace, days),
+  });
+}
+
+export function useRepos(workspace: string) {
+  return useQuery({ queryKey: keys.repos(workspace), queryFn: () => api.repos(workspace) });
 }
 
 export function useRepo(id: number) {
@@ -45,7 +57,7 @@ export function useUpdateSettings(id: number) {
     mutationFn: (patch: SettingsPatch) => api.updateSettings(id, patch),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: keys.repo(id) });
-      void client.invalidateQueries({ queryKey: keys.repos });
+      void client.invalidateQueries({ queryKey: ["repos"] });
     },
   });
 }

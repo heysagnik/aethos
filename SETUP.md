@@ -121,7 +121,7 @@ After creating it:
    DJANGO_SETTINGS_MODULE=aethos.settings.prod uv run python backend/manage.py migrate
    ```
    (Run `migrate` again after any release that adds a migration.)
-3. Open the site, click **Install on GitHub**, pick one repository, finish. You should land on the dashboard.
+3. Open the site and click **Sign in with GitHub**. A new user is asked to install the app: pick an account and its repositories, finish, and you land in that account's workspace. Use **Add GitHub account** in the sidebar to add more workspaces.
 
 ## 4. Build the code index (once per repository)
 

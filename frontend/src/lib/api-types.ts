@@ -174,6 +174,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workspaces */
+        get: operations["apps_dashboard_api_workspaces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -473,6 +490,17 @@ export interface components {
             /** Ready With Suggestions */
             ready_with_suggestions: number;
         };
+        /** WorkspaceOut */
+        WorkspaceOut: {
+            /** Account Type */
+            account_type: string;
+            /** Login */
+            login: string;
+            /** Repo Count */
+            repo_count: number;
+            /** Suspended */
+            suspended: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -563,6 +591,7 @@ export interface operations {
         parameters: {
             query?: {
                 days?: number;
+                workspace?: string;
             };
             header?: never;
             path?: never;
@@ -583,7 +612,9 @@ export interface operations {
     };
     apps_dashboard_api_repos: {
         parameters: {
-            query?: never;
+            query?: {
+                workspace?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -655,6 +686,7 @@ export interface operations {
                 repo_id?: number | null;
                 limit?: number;
                 offset?: number;
+                workspace?: string;
             };
             header?: never;
             path?: never;
@@ -691,6 +723,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewDetail"];
+                };
+            };
+        };
+    };
+    apps_dashboard_api_workspaces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceOut"][];
                 };
             };
         };

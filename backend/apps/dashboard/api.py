@@ -11,7 +11,7 @@ from pydantic import Field, ValidationError
 from apps.accounts.models import User
 from apps.dashboard import selectors
 from apps.indexing.embeddings import embedding_progress
-from apps.repos.models import Repository
+from apps.repos.models import Installation, Repository
 from apps.reviews.config import ReviewSettings
 from apps.reviews.models import Review
 from core.schemas import Severity
@@ -48,6 +48,23 @@ def _repo_or_404(request: HttpRequest, repo_id: int) -> Repository:
     if repo is None:
         raise Http404
     return repo
+
+
+def _workspace_or_404(request: HttpRequest, login: str | None) -> Installation | None:
+    """The requested workspace, which must be one the user belongs to; None means all of them."""
+    if not login:
+        return None
+    workspace = selectors.workspace_for_user(_user(request), login)
+    if workspace is None:
+        raise Http404
+    return workspace
+
+
+class WorkspaceOut(Schema):
+    login: str
+    account_type: str
+    repo_count: int
+    suspended: bool
 
 
 class VerdictCounts(Schema):
@@ -219,17 +236,41 @@ def _review_item(review: Review) -> dict[str, Any]:
     }
 
 
+@api.get("/workspaces", response=list[WorkspaceOut], url_name="workspaces")
+def workspaces(request: HttpRequest) -> list[dict[str, Any]]:
+    from django.db.models import Count, Q
+
+    rows = (
+        selectors.installations_for_user(_user(request))
+        .annotate(n=Count("repositories", filter=Q(repositories__removed_at__isnull=True)))
+        .order_by("account_login")
+    )
+    return [
+        {
+            "login": i.account_login,
+            "account_type": i.account_type,
+            "repo_count": i.n,
+            "suspended": i.suspended_at is not None,
+        }
+        for i in rows
+    ]
+
+
 @api.get("/overview", response=OverviewOut, url_name="overview")
-def overview(request: HttpRequest, days: int = 30) -> dict[str, Any]:
-    return selectors.overview(_user(request), max(1, min(days, 365)))
+def overview(request: HttpRequest, days: int = 30, workspace: str = "") -> dict[str, Any]:
+    scope = _workspace_or_404(request, workspace)
+    return selectors.overview(_user(request), max(1, min(days, 365)), scope)
 
 
 @api.get("/repos", response=list[RepoOut], url_name="repos")
-def repos(request: HttpRequest) -> list[dict[str, Any]]:
+def repos(request: HttpRequest, workspace: str = "") -> list[dict[str, Any]]:
     from django.db.models import Count
 
+    scope = _workspace_or_404(request, workspace)
     queryset = (
-        selectors.repos_for_user(_user(request)).annotate(n=Count("reviews")).order_by("full_name")
+        selectors.repos_for_user(_user(request), scope)
+        .annotate(n=Count("reviews"))
+        .order_by("full_name")
     )
     return [_repo_out(r, r.n) for r in queryset]
 
@@ -266,9 +307,14 @@ def update_settings(request: HttpRequest, repo_id: int, body: SettingsPatch) -> 
 
 @api.get("/reviews", response=list[ReviewListItem], url_name="reviews")
 def reviews(
-    request: HttpRequest, repo_id: int | None = None, limit: int = 50, offset: int = 0
+    request: HttpRequest,
+    repo_id: int | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    workspace: str = "",
 ) -> list[dict[str, Any]]:
-    queryset = selectors.reviews_for_user(_user(request)).filter(dry_run=False)
+    scope = _workspace_or_404(request, workspace)
+    queryset = selectors.reviews_for_user(_user(request), scope).filter(dry_run=False)
     if repo_id is not None:
         queryset = queryset.filter(repository_id=repo_id)
     page = queryset.order_by("-created_at")[

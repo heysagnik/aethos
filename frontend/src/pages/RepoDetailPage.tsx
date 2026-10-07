@@ -19,6 +19,7 @@ import { ReviewsTable } from "../components/ReviewsTable";
 import type { RepoDetail, SettingsPatch } from "../lib/api";
 import { formatNumber, shortSha, timeAgo } from "../lib/format";
 import { useRepo, useReviews, useUpdateSettings } from "../lib/queries";
+import { useWorkspaceSlug } from "../lib/workspace";
 
 export function splitList(text: string): string[] {
   return text
@@ -78,10 +79,10 @@ function SettingsForm({ repo }: { repo: RepoDetail }) {
     });
 
   return (
-    <Surface className="flex flex-col gap-4 p-4">
+    <Surface className="flex flex-col gap-4 px-4 py-3">
       <Text variant="heading">Review settings</Text>
       <Switch
-        label="Respond to @aethos mentions"
+        label="Respond to @aethos-agent mentions"
         checked={state.enabled}
         onCheckedChange={(checked) => set("enabled", checked)}
       />
@@ -150,7 +151,7 @@ function IndexCard({ repo }: { repo: RepoDetail }) {
       .catch(() => toasts.add({ title: "Could not copy", variant: "error" }));
   };
   return (
-    <Surface className="flex flex-col gap-4 p-4">
+    <Surface className="flex flex-col gap-4 px-4 py-3">
       <div className="flex items-center justify-between gap-2">
         <Text variant="heading">Code index</Text>
         <IndexStatusBadge status={repo.index_status} />
@@ -203,7 +204,8 @@ export function RepoDetailPage() {
   const params = useParams();
   const id = Number(params.repoId);
   const repo = useRepo(Number.isFinite(id) ? id : 0);
-  const reviews = useReviews({ repoId: id, limit: 10 });
+  const workspace = useWorkspaceSlug();
+  const reviews = useReviews({ workspace, repoId: id, limit: 10 });
 
   return (
     <QueryBoundary query={repo}>

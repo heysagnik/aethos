@@ -68,11 +68,11 @@ export function AppRoutes() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/app" element={<AppShell />}>
-          <Route index element={<OverviewPage />} />
-          <Route path="repos" element={<ReposPage />} />
-          <Route path="repos/:repoId" element={<RepoDetailPage />} />
-          <Route path="reviews" element={<ReviewsPage />} />
-          <Route path="reviews/:reviewId" element={<ReviewDetailPage />} />
+          <Route path=":workspace" element={<OverviewPage />} />
+          <Route path=":workspace/repos" element={<ReposPage />} />
+          <Route path=":workspace/repos/:repoId" element={<RepoDetailPage />} />
+          <Route path=":workspace/reviews" element={<ReviewsPage />} />
+          <Route path=":workspace/reviews/:reviewId" element={<ReviewDetailPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />

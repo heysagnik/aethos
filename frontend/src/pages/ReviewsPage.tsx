@@ -4,14 +4,16 @@ import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
 import { ReviewsTable } from "../components/ReviewsTable";
 import { useRepos, useReviews } from "../lib/queries";
+import { useWorkspaceSlug } from "../lib/workspace";
 
 const PAGE_SIZE = 25;
 
 export function ReviewsPage() {
   const [repoId, setRepoId] = useState<number | undefined>(undefined);
   const [limit, setLimit] = useState(PAGE_SIZE);
-  const repos = useRepos();
-  const reviews = useReviews({ repoId, limit });
+  const workspace = useWorkspaceSlug();
+  const repos = useRepos(workspace);
+  const reviews = useReviews({ workspace, repoId, limit });
 
   const items: Record<string, string> = { all: "All repositories" };
   for (const repo of repos.data ?? []) items[String(repo.id)] = repo.full_name;

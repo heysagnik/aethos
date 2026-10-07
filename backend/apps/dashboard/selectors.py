@@ -10,23 +10,35 @@ from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.repos.models import Repository
+from apps.repos.models import Installation, Repository
 from apps.reviews.models import Finding, Review, ReviewMode, ReviewStatus
 
 PAIR_SCAN_LIMIT = 500
 
 
-def repos_for_user(user: User) -> QuerySet[Repository]:
-    return Repository.objects.filter(installation__members__user=user).distinct()
+def installations_for_user(user: User) -> QuerySet[Installation]:
+    """The workspaces (GitHub accounts with Aethos installed) this user belongs to."""
+    return Installation.objects.filter(members__user=user).distinct()
 
 
-def reviews_for_user(user: User) -> QuerySet[Review]:
-    return Review.objects.filter(repository__in=repos_for_user(user)).select_related("repository")
+def workspace_for_user(user: User, login: str) -> Installation | None:
+    return installations_for_user(user).filter(account_login__iexact=login).first()
 
 
-def overview(user: User, days: int) -> dict[str, Any]:
+def repos_for_user(user: User, workspace: Installation | None = None) -> QuerySet[Repository]:
+    installations = [workspace.pk] if workspace else installations_for_user(user).values("pk")
+    return Repository.objects.filter(installation_id__in=installations, removed_at__isnull=True)
+
+
+def reviews_for_user(user: User, workspace: Installation | None = None) -> QuerySet[Review]:
+    return Review.objects.filter(repository__in=repos_for_user(user, workspace)).select_related(
+        "repository"
+    )
+
+
+def overview(user: User, days: int, workspace: Installation | None = None) -> dict[str, Any]:
     since = timezone.now() - timedelta(days=days)
-    base = reviews_for_user(user).filter(created_at__gte=since, dry_run=False)
+    base = reviews_for_user(user, workspace).filter(created_at__gte=since, dry_run=False)
     mine = base.filter(mode=ReviewMode.AETHOS)
     posted = mine.filter(status=ReviewStatus.POSTED)
 

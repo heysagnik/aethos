@@ -1,6 +1,5 @@
 import { Badge, Banner, LinkButton, Surface, Text } from "@cloudflare/kumo";
 import {
-  GithubLogoIcon,
   GitPullRequestIcon,
   MagnifyingGlassIcon,
   SealCheckIcon,
@@ -8,8 +7,9 @@ import {
 } from "@phosphor-icons/react";
 import { useSearchParams } from "react-router-dom";
 import { Brand } from "../components/Brand";
-
-const INSTALL_URL = "/api/github/install";
+import { GitHubIcon } from "../components/GitHubIcon";
+import { LOGIN_URL } from "../lib/links";
+import { useMe } from "../lib/queries";
 
 const ERRORS: Record<string, string> = {
   login_failed: "We could not sign you in with GitHub. Please try again.",
@@ -18,14 +18,14 @@ const ERRORS: Record<string, string> = {
 
 const STEPS = [
   {
-    icon: GithubLogoIcon,
-    title: "Install",
-    body: "Add Aethos to the repositories you choose. It asks for read access to code and permission to comment on pull requests.",
+    icon: GitHubIcon,
+    title: "Sign in and install",
+    body: "Sign in with GitHub, then add Aethos to the accounts and repositories you choose. Each account gets its own workspace.",
   },
   {
     icon: GitPullRequestIcon,
     title: "Mention",
-    body: "Comment @aethos on any pull request, optionally with a focus such as security or performance.",
+    body: "Comment @aethos-agent on any pull request, optionally with a focus such as security or performance.",
   },
   {
     icon: SealCheckIcon,
@@ -52,10 +52,17 @@ const REASONS = [
   },
 ] as const;
 
-function InstallButton({ size = "lg" }: { size?: "base" | "lg" }) {
+function SignInButton({ size = "lg" }: { size?: "base" | "lg" }) {
+  const me = useMe();
+  const signedIn = me.isSuccess;
   return (
-    <LinkButton href={INSTALL_URL} variant="primary" size={size} icon={<GithubLogoIcon />}>
-      Install on GitHub
+    <LinkButton
+      href={signedIn ? "/app" : LOGIN_URL}
+      variant="primary"
+      size={size}
+      icon={<GitHubIcon />}
+    >
+      {signedIn ? "Open dashboard" : "Sign in with GitHub"}
     </LinkButton>
   );
 }
@@ -68,12 +75,7 @@ export function LandingPage() {
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-20 px-6 py-6">
       <nav className="flex items-center justify-between" aria-label="Main">
         <Brand />
-        <div className="flex items-center gap-2">
-          <LinkButton href="/app" variant="ghost">
-            Dashboard
-          </LinkButton>
-          <InstallButton size="base" />
-        </div>
+        <SignInButton size="base" />
       </nav>
 
       {error ? <Banner variant="error" title="Something went wrong" description={error} /> : null}
@@ -84,18 +86,18 @@ export function LandingPage() {
           <Text variant="heading" size="lg" as="h1">
             Know if a pull request is ready to merge.
           </Text>
-          <Text variant="secondary" size="lg">
-            Mention @aethos on a pull request. It reviews the change using an index of your
+          <Text variant="secondary">
+            Mention @aethos-agent on a pull request. It reviews the change using an index of your
             codebase, so it understands the surrounding code without reading all of it.
           </Text>
         </div>
-        <InstallButton />
+        <SignInButton />
       </header>
 
       <section aria-label="Example review">
-        <Surface className="flex flex-col gap-3 p-6">
+        <Surface className="flex flex-col gap-3 px-6 py-5">
           <div className="flex flex-wrap items-center gap-2">
-            <Text bold>aethos</Text>
+            <Text bold>aethos-agent</Text>
             <Badge variant="secondary">bot</Badge>
             <Text variant="secondary" size="sm">
               commented on #128
@@ -133,7 +135,7 @@ export function LandingPage() {
         </Text>
         <div className="grid gap-4 md:grid-cols-3">
           {STEPS.map((step, index) => (
-            <Surface key={step.title} className="flex flex-col gap-2 p-5">
+            <Surface key={step.title} className="flex flex-col gap-2 px-5 py-4">
               <step.icon size={24} className="text-kumo-brand" aria-hidden="true" />
               <Text bold>
                 {index + 1}. {step.title}
@@ -152,7 +154,7 @@ export function LandingPage() {
         </Text>
         <div className="grid gap-4 md:grid-cols-3">
           {REASONS.map((reason) => (
-            <Surface key={reason.title} className="flex flex-col gap-2 p-5">
+            <Surface key={reason.title} className="flex flex-col gap-2 px-5 py-4">
               <reason.icon size={24} className="text-kumo-brand" aria-hidden="true" />
               <Text bold>{reason.title}</Text>
               <Text variant="secondary" size="sm">
@@ -167,7 +169,7 @@ export function LandingPage() {
         <Text variant="heading" size="lg" as="h2">
           Add Aethos to your next pull request.
         </Text>
-        <InstallButton />
+        <SignInButton />
       </section>
 
       <footer className="border-t border-kumo-hairline py-6">

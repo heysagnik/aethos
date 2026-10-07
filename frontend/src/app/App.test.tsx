@@ -30,16 +30,39 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const EMPTY_OVERVIEW = {
+  days: 30, reviews_total: 0, reviews_posted: 0, reviews_skipped: 0,
+  verdicts: { ready: 0, ready_with_suggestions: 0, not_ready: 0, inconclusive: 0 },
+  severities: { critical: 0, high: 0, medium: 0, low: 0, nit: 0 },
+  tokens_in: 0, tokens_out: 0, cost_usd: 0, series: [],
+  savings: { pairs: 0, baseline_tokens_in: 0, aethos_tokens_in: 0, saved_pct: null },
+};
+const ME = { login: "octo", avatar_url: "", csrf_token: "t", install_url: "x" };
+const WORKSPACES = [
+  { login: "acme", account_type: "Organization", repo_count: 1, suspended: false },
+  { login: "octo", account_type: "User", repo_count: 0, suspended: false },
+];
+
 describe("landing page", () => {
-  it("offers an install button that starts the GitHub install flow", () => {
+  it("offers sign in with GitHub when signed out", async () => {
+    mockFetch({ "/api/auth/me": { status: 401, body: { detail: "Unauthorized" } } });
     renderAt("/");
-    const buttons = screen.getAllByRole("link", { name: /install on github/i });
+    const buttons = await screen.findAllByRole("link", { name: /sign in with github/i });
     expect(buttons.length).toBeGreaterThanOrEqual(2);
-    for (const button of buttons) expect(button).toHaveAttribute("href", "/api/github/install");
+    for (const button of buttons) expect(button).toHaveAttribute("href", "/api/auth/login");
+    expect(screen.queryByRole("link", { name: /install on github/i })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/ready to merge/i);
   });
 
+  it("links straight to the dashboard when already signed in", async () => {
+    mockFetch({ "/api/auth/me": { body: ME } });
+    renderAt("/");
+    const buttons = await screen.findAllByRole("link", { name: /open dashboard/i });
+    for (const button of buttons) expect(button).toHaveAttribute("href", "/app");
+  });
+
   it("explains a failed login", () => {
+    mockFetch({ "/api/auth/me": { status: 401, body: { detail: "Unauthorized" } } });
     renderAt("/?error=login_failed");
     expect(screen.getByText(/could not sign you in/i)).toBeInTheDocument();
   });
@@ -53,11 +76,42 @@ describe("dashboard", () => {
     expect(screen.getByRole("button", { name: /continue with github/i })).toBeInTheDocument();
   });
 
+  it("asks a new user to install the app when they have no workspaces", async () => {
+    mockFetch({ "/api/auth/me": { body: ME }, "/api/dashboard/workspaces": { body: [] } });
+    renderAt("/app");
+    expect(await screen.findByText(/install aethos on a github account/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /install on github/i })).toBeInTheDocument();
+  });
+
+  it("opens the first workspace by default", async () => {
+    mockFetch({
+      "/api/auth/me": { body: ME },
+      "/api/dashboard/workspaces": { body: WORKSPACES },
+      "/api/dashboard/repos": { body: [] },
+      "/api/dashboard/overview": { body: EMPTY_OVERVIEW },
+      "/api/dashboard/reviews": { body: [] },
+    });
+    renderAt("/app");
+    expect(await screen.findByText(/no repositories yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Repositories" })).toHaveAttribute(
+      "href",
+      "/app/acme/repos",
+    );
+  });
+
+  it("does not show a workspace the user does not belong to", async () => {
+    mockFetch({
+      "/api/auth/me": { body: ME },
+      "/api/dashboard/workspaces": { body: WORKSPACES },
+    });
+    renderAt("/app/stranger-org");
+    expect(await screen.findByText(/page not found/i)).toBeInTheDocument();
+  });
+
   it("shows an empty state with an add-repositories action when nothing is installed", async () => {
     mockFetch({
-      "/api/auth/me": {
-        body: { login: "octo", avatar_url: "", csrf_token: "t", install_url: "https://github.com/apps/aethos/installations/new" },
-      },
+      "/api/auth/me": { body: ME },
+      "/api/dashboard/workspaces": { body: WORKSPACES },
       "/api/dashboard/repos": { body: [] },
       "/api/dashboard/overview": {
         body: {
@@ -70,7 +124,7 @@ describe("dashboard", () => {
       },
       "/api/dashboard/reviews": { body: [] },
     });
-    renderAt("/app");
+    renderAt("/app/acme");
     expect(await screen.findByText(/no repositories yet/i)).toBeInTheDocument();
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /add repositories/i })).toBeInTheDocument(),
@@ -79,7 +133,8 @@ describe("dashboard", () => {
 
   it("shows stats and recent reviews", async () => {
     mockFetch({
-      "/api/auth/me": { body: { login: "octo", avatar_url: "", csrf_token: "t", install_url: "x" } },
+      "/api/auth/me": { body: ME },
+      "/api/dashboard/workspaces": { body: WORKSPACES },
       "/api/dashboard/repos": {
         body: [{ id: 1, full_name: "acme/app", is_private: false, default_branch: "main",
           index_status: "ready", indexed_sha: "abcdef1234", last_indexed_at: null, file_count: 4,
@@ -102,7 +157,7 @@ describe("dashboard", () => {
           created_at: new Date().toISOString() }],
       },
     });
-    renderAt("/app");
+    renderAt("/app/acme");
     expect(await screen.findByText("Reviews posted")).toBeInTheDocument();
     expect(await screen.findByText("acme/app#7")).toBeInTheDocument();
     expect(screen.getAllByText("Not ready").length).toBeGreaterThan(0);
@@ -111,10 +166,11 @@ describe("dashboard", () => {
 
   it("shows an error with a retry action when the API fails", async () => {
     mockFetch({
-      "/api/auth/me": { body: { login: "octo", avatar_url: "", csrf_token: "t", install_url: "x" } },
+      "/api/auth/me": { body: ME },
+      "/api/dashboard/workspaces": { body: WORKSPACES },
       "/api/dashboard/repos": { status: 500, body: { detail: "Database unavailable" } },
     });
-    renderAt("/app/repos");
+    renderAt("/app/acme/repos");
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
     expect(screen.getByText("Database unavailable")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();

@@ -1,69 +1,154 @@
-import { Banner, Button, Empty, Loader, Sidebar, Text } from "@cloudflare/kumo";
+import { Banner, Button, Empty, Loader, Select, Sidebar, Text } from "@cloudflare/kumo";
 import {
   FolderSimpleIcon,
   GitPullRequestIcon,
-  GithubLogoIcon,
+  PlusIcon,
   SignOutIcon,
   SquaresFourIcon,
 } from "@phosphor-icons/react";
-import { Outlet, useLocation } from "react-router-dom";
-import { ApiError } from "../lib/api";
-import { useLogout, useMe } from "../lib/queries";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Brand } from "../components/Brand";
+import { GitHubIcon } from "../components/GitHubIcon";
+import { ApiError, type Workspace } from "../lib/api";
+import { INSTALL_URL, LOGIN_URL } from "../lib/links";
+import { useLogout, useMe, useWorkspaces } from "../lib/queries";
+import { useWorkspaceSlug, workspacePath } from "../lib/workspace";
+import { NotFoundPage } from "../pages/NotFoundPage";
 
-const NAV = [
-  { href: "/app", label: "Overview", icon: SquaresFourIcon, match: (p: string) => p === "/app" },
-  {
-    href: "/app/repos",
-    label: "Repositories",
-    icon: FolderSimpleIcon,
-    match: (p: string) => p.startsWith("/app/repos"),
-  },
-  {
-    href: "/app/reviews",
-    label: "Reviews",
-    icon: GitPullRequestIcon,
-    match: (p: string) => p.startsWith("/app/reviews"),
-  },
-] as const;
+function FullPage({ children }: { children: React.ReactNode }) {
+  return <div className="flex min-h-screen items-center justify-center px-6 py-5">{children}</div>;
+}
+
+function Loading() {
+  return (
+    <FullPage>
+      <div role="status" aria-label="Loading">
+        <Loader size={28} />
+      </div>
+    </FullPage>
+  );
+}
 
 function SignIn() {
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
+    <FullPage>
       <Empty
-        icon={<GithubLogoIcon size={48} />}
+        icon={<GitHubIcon size={48} />}
         title="Sign in to Aethos"
         description="Use your GitHub account to see the repositories and pull requests Aethos reviews for you."
         contents={
-          <Button variant="primary" onClick={() => window.location.assign("/api/auth/login")}>
+          <Button variant="primary" onClick={() => window.location.assign(LOGIN_URL)}>
             Continue with GitHub
           </Button>
         }
       />
+    </FullPage>
+  );
+}
+
+function Onboarding({ login }: { login: string }) {
+  const logout = useLogout();
+  return (
+    <FullPage>
+      <Empty
+        icon={<GitHubIcon size={48} />}
+        title="Install Aethos on a GitHub account"
+        description={`You are signed in as ${login}. Choose a personal account or an organization, then pick the repositories Aethos may review. Each account becomes its own workspace.`}
+        contents={
+          <div className="flex items-center gap-2">
+            <Button variant="primary" onClick={() => window.location.assign(INSTALL_URL)}>
+              Install on GitHub
+            </Button>
+            <Button variant="ghost" loading={logout.isPending} onClick={() => logout.mutate()}>
+              Sign out
+            </Button>
+          </div>
+        }
+      />
+    </FullPage>
+  );
+}
+
+function WorkspaceSwitcher({ workspaces, current }: { workspaces: Workspace[]; current: string }) {
+  const navigate = useNavigate();
+  const items: Record<string, string> = {};
+  for (const workspace of workspaces) items[workspace.login] = workspace.login;
+  return (
+    <div className="flex flex-col gap-2 px-2">
+      <Select
+        label="Workspace"
+        hideLabel
+        value={current}
+        items={items}
+        onValueChange={(value) => {
+          if (value) navigate(workspacePath(String(value)));
+        }}
+      />
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<PlusIcon />}
+        onClick={() => window.location.assign(INSTALL_URL)}
+      >
+        Add GitHub account
+      </Button>
     </div>
   );
 }
 
 export function AppShell() {
   const me = useMe();
+  const workspaces = useWorkspaces();
   const logout = useLogout();
   const { pathname } = useLocation();
+  const slug = useWorkspaceSlug();
 
-  if (me.isPending) {
-    return (
-      <div className="flex min-h-screen items-center justify-center" role="status" aria-label="Loading">
-        <Loader size={28} />
-      </div>
-    );
-  }
+  if (me.isPending) return <Loading />;
   if (me.isError) {
     if (me.error instanceof ApiError && me.error.status === 401) return <SignIn />;
     return (
-      <div className="p-6">
+      <div className="px-6 py-5">
         <Banner variant="error" title="Could not load your account" description={me.error.message} />
       </div>
     );
   }
+  if (workspaces.isPending) return <Loading />;
+  if (workspaces.isError) {
+    return (
+      <div className="px-6 py-5">
+        <Banner
+          variant="error"
+          title="Could not load your workspaces"
+          description={workspaces.error.message}
+        />
+      </div>
+    );
+  }
+
+  const list = workspaces.data;
+  const first = list[0];
+  if (!first) return <Onboarding login={me.data.login} />;
+  if (pathname.replace(/\/+$/, "") === "/app") {
+    return <Navigate to={workspacePath(first.login)} replace />;
+  }
+
+  const current = list.find((w) => w.login.toLowerCase() === slug.toLowerCase());
+  const base = workspacePath(current?.login ?? first.login);
+  const nav = [
+    { href: base, label: "Overview", icon: SquaresFourIcon, active: pathname === base },
+    {
+      href: `${base}/repos`,
+      label: "Repositories",
+      icon: FolderSimpleIcon,
+      active: pathname.startsWith(`${base}/repos`),
+    },
+    {
+      href: `${base}/reviews`,
+      label: "Reviews",
+      icon: GitPullRequestIcon,
+      active: pathname.startsWith(`${base}/reviews`),
+    },
+  ];
 
   return (
     <Sidebar.Provider defaultOpen>
@@ -72,14 +157,15 @@ export function AppShell() {
           <Brand />
         </Sidebar.Header>
         <Sidebar.Content>
+          <WorkspaceSwitcher workspaces={list} current={current?.login ?? ""} />
           <Sidebar.Group>
             <Sidebar.Menu>
-              {NAV.map((item) => (
+              {nav.map((item) => (
                 <Sidebar.MenuButton
                   key={item.href}
                   icon={item.icon}
                   href={item.href}
-                  active={item.match(pathname)}
+                  active={item.active}
                 >
                   {item.label}
                 </Sidebar.MenuButton>
@@ -104,12 +190,12 @@ export function AppShell() {
           </div>
         </Sidebar.Footer>
       </Sidebar>
-      <main className="min-w-0 flex-1 p-6 md:p-8">
+      <main className="min-w-0 flex-1 px-6 py-5 md:px-8 md:py-6">
         <div className="mx-auto flex max-w-5xl flex-col gap-6">
           <div className="md:hidden">
             <Sidebar.Trigger />
           </div>
-          <Outlet />
+          {current ? <Outlet /> : <NotFoundPage />}
         </div>
       </main>
     </Sidebar.Provider>

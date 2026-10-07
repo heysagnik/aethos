@@ -8,7 +8,7 @@ interface StatCardProps {
 
 export function StatCard({ label, value, hint }: StatCardProps) {
   return (
-    <Surface className="flex flex-col gap-1 p-4">
+    <Surface className="flex flex-col gap-1 px-4 py-3">
       <Text variant="secondary" size="sm">
         {label}
       </Text>

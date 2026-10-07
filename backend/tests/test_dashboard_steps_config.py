@@ -180,3 +180,35 @@ def test_step_failures_retry_then_mark_failed(client, settings, monkeypatch, rep
     review.refresh_from_db()
     assert review.status == ReviewStatus.FAILED and "boom" in review.error
     assert len(notices) == 1
+
+
+def test_workspaces_list_and_scope_the_dashboard(client, user, repo):
+    from apps.repos.models import Installation, InstallationMember, Repository
+
+    second = Installation.objects.create(github_installation_id=333, account_login="beta-org")
+    other_repo = Repository.objects.create(
+        installation=second, github_repo_id=444, full_name="beta-org/api"
+    )
+    InstallationMember.objects.create(user=user, installation=second)
+    _review(repo)
+    _review(other_repo, trigger_comment_id=2)
+    client.force_login(user)
+
+    workspaces = client.get("/api/dashboard/workspaces").json()
+    assert [(w["login"], w["repo_count"]) for w in workspaces] == [("acme", 1), ("beta-org", 1)]
+
+    assert len(client.get("/api/dashboard/repos").json()) == 2
+    scoped = client.get("/api/dashboard/repos", {"workspace": "Beta-Org"}).json()
+    assert [r["full_name"] for r in scoped] == ["beta-org/api"]
+    reviews = client.get("/api/dashboard/reviews", {"workspace": "acme"}).json()
+    assert [r["repo"] for r in reviews] == ["acme/app"]
+    assert client.get("/api/dashboard/overview", {"workspace": "acme"}).json()["reviews_total"] == 1
+
+
+def test_a_workspace_the_user_does_not_belong_to_is_not_found(client, user, stranger):
+    client.force_login(user)
+    assert client.get("/api/dashboard/workspaces").json() == [
+        {"login": "acme", "account_type": "Organization", "repo_count": 0, "suspended": False}
+    ]
+    for path in ("overview", "repos", "reviews"):
+        assert client.get(f"/api/dashboard/{path}", {"workspace": "other"}).status_code == 404

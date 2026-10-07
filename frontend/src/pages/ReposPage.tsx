@@ -4,24 +4,23 @@ import { IndexStatusBadge } from "../components/Badges";
 import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
 import { formatNumber, shortSha, timeAgo } from "../lib/format";
-import { useMe, useRepos } from "../lib/queries";
+import { INSTALL_URL } from "../lib/links";
+import { useRepos } from "../lib/queries";
+import { useWorkspaceSlug, workspacePath } from "../lib/workspace";
 
 export function ReposPage() {
-  const repos = useRepos();
-  const me = useMe();
-  const installUrl = me.data?.install_url;
+  const workspace = useWorkspaceSlug();
+  const repos = useRepos(workspace);
 
   return (
     <>
       <PageHeader
         title="Repositories"
-        description="Repositories where Aethos is installed."
+        description="Repositories in this account where Aethos is installed."
         actions={
-          installUrl ? (
-            <Button icon={<PlusIcon />} onClick={() => window.location.assign(installUrl)}>
-              Add repositories
-            </Button>
-          ) : null
+          <Button icon={<PlusIcon />} onClick={() => window.location.assign(INSTALL_URL)}>
+            Add repositories
+          </Button>
         }
       />
       <QueryBoundary query={repos}>
@@ -31,7 +30,7 @@ export function ReposPage() {
               <Empty
                 icon={<FolderSimpleIcon size={40} />}
                 title="No repositories yet"
-                description="Install the Aethos GitHub App and choose which repositories it can review."
+                description="Choose which repositories Aethos can review for this account on GitHub."
               />
             </Surface>
           ) : (
@@ -50,7 +49,7 @@ export function ReposPage() {
                     <Table.Row key={repo.id}>
                       <Table.Cell>
                         <div className="flex flex-col">
-                          <Link href={`/app/repos/${repo.id}`} variant="plain">
+                          <Link href={workspacePath(workspace, `repos/${repo.id}`)} variant="plain">
                             {repo.full_name}
                           </Link>
                           <Text variant="secondary" size="xs">

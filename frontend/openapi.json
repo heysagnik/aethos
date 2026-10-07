@@ -828,6 +828,34 @@
         ],
         "title": "VerdictCounts",
         "type": "object"
+      },
+      "WorkspaceOut": {
+        "properties": {
+          "account_type": {
+            "title": "Account Type",
+            "type": "string"
+          },
+          "login": {
+            "title": "Login",
+            "type": "string"
+          },
+          "repo_count": {
+            "title": "Repo Count",
+            "type": "integer"
+          },
+          "suspended": {
+            "title": "Suspended",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "login",
+          "account_type",
+          "repo_count",
+          "suspended"
+        ],
+        "title": "WorkspaceOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -944,6 +972,16 @@
               "title": "Days",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Workspace",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -969,7 +1007,18 @@
     "/api/dashboard/repos": {
       "get": {
         "operationId": "apps_dashboard_api_repos",
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Workspace",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -1111,6 +1160,16 @@
               "title": "Offset",
               "type": "integer"
             }
+          },
+          {
+            "in": "query",
+            "name": "workspace",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Workspace",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1169,6 +1228,34 @@
           }
         ],
         "summary": "Review Detail"
+      }
+    },
+    "/api/dashboard/workspaces": {
+      "get": {
+        "operationId": "apps_dashboard_api_workspaces",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkspaceOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "summary": "Workspaces"
       }
     }
   },

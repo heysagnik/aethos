@@ -1,13 +1,15 @@
 import { Badge, Button, Empty, Meter, Surface, Tabs, Text } from "@cloudflare/kumo";
-import { GithubLogoIcon } from "@phosphor-icons/react";
 import { useState } from "react";
+import { GitHubIcon } from "../components/GitHubIcon";
 import { BarSeries } from "../components/BarSeries";
 import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
 import { ReviewsTable } from "../components/ReviewsTable";
 import { StatCard } from "../components/StatCard";
 import { formatCompact, formatCost, formatNumber } from "../lib/format";
-import { useMe, useOverview, useRepos, useReviews } from "../lib/queries";
+import { INSTALL_URL } from "../lib/links";
+import { useOverview, useRepos, useReviews } from "../lib/queries";
+import { useWorkspaceSlug } from "../lib/workspace";
 
 const RANGES = [
   { value: "7", label: "7 days" },
@@ -24,10 +26,10 @@ const VERDICT_ROWS = [
 
 export function OverviewPage() {
   const [days, setDays] = useState(30);
-  const me = useMe();
-  const repos = useRepos();
-  const overview = useOverview(days);
-  const recent = useReviews({ limit: 8 });
+  const workspace = useWorkspaceSlug();
+  const repos = useRepos(workspace);
+  const overview = useOverview(workspace, days);
+  const recent = useReviews({ workspace, limit: 8 });
 
   return (
     <>
@@ -47,15 +49,13 @@ export function OverviewPage() {
       {repos.data && repos.data.length === 0 ? (
         <Surface className="p-2">
           <Empty
-            icon={<GithubLogoIcon size={40} />}
+            icon={<GitHubIcon size={40} />}
             title="No repositories yet"
-            description="Install Aethos on a repository, then comment @aethos on a pull request."
+            description="Choose repositories for this account on GitHub, then comment @aethos-agent on a pull request."
             contents={
-              me.data ? (
-                <Button variant="primary" onClick={() => window.location.assign(me.data.install_url)}>
-                  Add repositories
-                </Button>
-              ) : null
+              <Button variant="primary" onClick={() => window.location.assign(INSTALL_URL)}>
+                Add repositories
+              </Button>
             }
           />
         </Surface>
@@ -85,7 +85,7 @@ export function OverviewPage() {
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <Surface className="flex flex-col gap-4 p-4">
+                  <Surface className="flex flex-col gap-4 px-4 py-3">
                     <Text variant="heading">Verdicts</Text>
                     {VERDICT_ROWS.map((row) => (
                       <div key={row.key} className="flex flex-col gap-1">
@@ -104,15 +104,15 @@ export function OverviewPage() {
                     ))}
                   </Surface>
 
-                  <div className="flex flex-col gap-4">
-                    <Surface className="flex flex-col gap-3 p-4">
+                  <div className="flex flex-col gapx-4 py-3">
+                    <Surface className="flex flex-col gap-3 px-4 py-3">
                       <Text variant="heading">Reviews per day</Text>
                       <BarSeries
                         ariaLabel="Reviews per day"
                         points={data.series.map((p) => ({ label: p.date, value: p.reviews }))}
                       />
                     </Surface>
-                    <Surface className="flex flex-col gap-3 p-4">
+                    <Surface className="flex flex-col gap-3 px-4 py-3">
                       <Text variant="heading">Context savings</Text>
                       {data.savings.saved_pct === null ? (
                         <Text variant="secondary" size="sm">

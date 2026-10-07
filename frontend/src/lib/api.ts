@@ -3,6 +3,7 @@ import type { components } from "./api-types";
 type Schemas = components["schemas"];
 
 export type Me = Schemas["MeOut"];
+export type Workspace = Schemas["WorkspaceOut"];
 export type Overview = Schemas["OverviewOut"];
 export type Repo = Schemas["RepoOut"];
 export type RepoDetail = Schemas["RepoDetail"];
@@ -61,12 +62,13 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
 }
 
 export interface ReviewQuery {
+  workspace?: string;
   repoId?: number;
   limit?: number;
   offset?: number;
 }
 
-function query(params: Record<string, number | undefined>): string {
+function query(params: Record<string, number | string | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) search.set(key, String(value));
@@ -78,15 +80,18 @@ function query(params: Record<string, number | undefined>): string {
 export const api = {
   me: () => request<Me>("GET", "/api/auth/me"),
   logout: () => request<{ ok: boolean }>("POST", "/api/auth/logout"),
-  overview: (days: number) => request<Overview>("GET", `/api/dashboard/overview${query({ days })}`),
-  repos: () => request<Repo[]>("GET", "/api/dashboard/repos"),
+  workspaces: () => request<Workspace[]>("GET", "/api/dashboard/workspaces"),
+  overview: (workspace: string, days: number) =>
+    request<Overview>("GET", `/api/dashboard/overview${query({ workspace, days })}`),
+  repos: (workspace: string) =>
+    request<Repo[]>("GET", `/api/dashboard/repos${query({ workspace })}`),
   repo: (id: number) => request<RepoDetail>("GET", `/api/dashboard/repos/${id}`),
   updateSettings: (id: number, patch: SettingsPatch) =>
     request<Repo>("PATCH", `/api/dashboard/repos/${id}/settings`, patch),
-  reviews: ({ repoId, limit, offset }: ReviewQuery = {}) =>
+  reviews: ({ workspace, repoId, limit, offset }: ReviewQuery = {}) =>
     request<ReviewListItem[]>(
       "GET",
-      `/api/dashboard/reviews${query({ repo_id: repoId, limit, offset })}`,
+      `/api/dashboard/reviews${query({ workspace, repo_id: repoId, limit, offset })}`,
     ),
   review: (id: number) => request<ReviewDetail>("GET", `/api/dashboard/reviews/${id}`),
 };

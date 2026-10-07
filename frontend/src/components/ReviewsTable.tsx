@@ -2,6 +2,7 @@ import { Empty, Link, Surface, Table, Text } from "@cloudflare/kumo";
 import { GitPullRequestIcon } from "@phosphor-icons/react";
 import { formatCompact, formatCost, timeAgo } from "../lib/format";
 import type { ReviewListItem } from "../lib/api";
+import { useWorkspaceSlug, workspacePath } from "../lib/workspace";
 import { StatusBadge, VerdictBadge } from "./Badges";
 
 interface ReviewsTableProps {
@@ -10,6 +11,7 @@ interface ReviewsTableProps {
 }
 
 export function ReviewsTable({ reviews, showRepo = true }: ReviewsTableProps) {
+  const workspace = useWorkspaceSlug();
   if (reviews.length === 0) {
     return (
       <Surface className="p-2">
@@ -17,7 +19,7 @@ export function ReviewsTable({ reviews, showRepo = true }: ReviewsTableProps) {
           size="sm"
           icon={<GitPullRequestIcon size={32} />}
           title="No reviews yet"
-          description="Comment @aethos on a pull request to get a merge-readiness review."
+          description="Comment @aethos-agent on a pull request to get a merge-readiness review."
         />
       </Surface>
     );
@@ -40,7 +42,7 @@ export function ReviewsTable({ reviews, showRepo = true }: ReviewsTableProps) {
             <Table.Row key={review.id}>
               <Table.Cell>
                 <div className="flex min-w-0 flex-col">
-                  <Link href={`/app/reviews/${review.id}`} variant="plain">
+                  <Link href={workspacePath(workspace, `reviews/${review.id}`)} variant="plain">
                     {showRepo ? `${review.repo}#${review.pr_number}` : `#${review.pr_number}`}
                   </Link>
                   <Text variant="secondary" size="sm" truncate>
