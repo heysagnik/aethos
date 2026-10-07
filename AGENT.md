@@ -2,7 +2,7 @@
 
 Read this file and `PLAN.md` before changing anything. If a task conflicts with either, stop and ask. Do not guess.
 
-Aethos is a GitHub App that reviews PRs on `@aethos` mention. Backend is Django (django-ninja) on Vercel with Neon Postgres. Frontend is a React SPA built with Kumo. See `PLAN.md` for the architecture.
+Aethos is a GitHub App that reviews PRs on `@aethos` mention. Backend is Django (django-ninja) on Vercel with Neon Postgres. Frontend is a React SPA built with shadcn/ui on Base UI. See `PLAN.md` for the architecture.
 
 ## 1. How to work (the loop)
 
@@ -22,7 +22,7 @@ When unsure about a requirement, an API, or a library's behaviour, **look it up 
 - Never trust input from outside: webhook payloads, ingest payloads, PR text, diffs, code comments, LLM output. Validate with Pydantic at the boundary.
 - Never make the bot approve, request changes on, merge, push to, or edit a user's repo. Reviews use `event="COMMENT"` only.
 - Never build SQL by string formatting. Use the ORM or parameterized queries.
-- Never disable signature checks (GitHub HMAC, QStash, OIDC), CSRF, or access scoping to make something work.
+- Never disable signature checks (GitHub HMAC, QStash), CSRF, or access scoping to make something work.
 - Never skip or weaken tests, lint rules, type checks or pre-commit hooks to get green. Fix the cause.
 - Never add a dependency without stating why and checking it is maintained, compatible with our Python/React versions, and licensed compatibly. Prefer the standard library and what is already installed.
 - Never edit an applied migration. Add a new one.
@@ -67,32 +67,32 @@ api (ninja routers / views)  ->  services.py  ->  selectors.py  ->  models.py
 - The verdict comes from `core/verdict` using structured inputs. Do not let model prose decide it.
 
 ## 4. Indexer conventions
-- Pure functions for parsing and graph building; I/O only in `upload.py` and the CLI entrypoint.
+- The indexer lives in `backend/apps/indexing/` and runs on the server in queue steps (`index`, then `embed`). Parsing and graph building (`indexing/code/`) are pure functions; I/O stays in `indexer.py`, `services.py` and `nim.py`.
 - Deterministic output: same repo state gives the same symbols, edges and ordering.
 - Never crash the whole run on one bad file: record the failure, skip the file, continue, and report counts at the end.
-- Treat all repo contents as untrusted. Never execute repo code. Cap file size and skip generated/vendored paths.
-- Golden tests with small fixture repos for every supported language and edge kind.
+- Treat all repo contents as untrusted. Never execute repo code. Cap file size, file count and archive size, and skip generated/vendored paths.
+- Embeddings come from NVIDIA NIM (`nvidia/nemotron-3-embed-1b`, 2048-d, stored as pgvector `halfvec`). A missing key or an unavailable service must degrade to keyword matching, never fail a review.
+- Golden tests with small fixture repos for every supported language and edge kind; mock the NIM API in tests.
 
-## 5. Frontend conventions (React / TypeScript / Kumo)
+## 5. Frontend conventions (React / TypeScript / shadcn/ui)
 
-**Stack:** Vite, React, TypeScript `strict`, Tailwind CSS, `@cloudflare/kumo`, `@phosphor-icons/react`, React Router, TanStack Query.
+**Stack:** Vite, React, TypeScript `strict`, Tailwind CSS v4, shadcn/ui on Base UI (`@base-ui/react`), `@phosphor-icons/react`, React Router, TanStack Query.
 
 **Design consistency (the most important frontend rule):**
-- **Use Kumo components.** Before building any UI element, check Kumo's component docs (https://kumo-ui.com). If Kumo has it, use it. Read the component's page for its real props and variants; do not guess prop names.
-- Compose Kumo parts into small app components in `frontend/src/components` only when the same combination is used in two or more places.
-- **No hard-coded colors, font sizes, radii or shadows.** Use Kumo's semantic tokens and Tailwind utilities mapped to them. If you need a value that does not exist, stop and ask instead of inventing one.
+- **Use the shadcn components in `src/components/ui`.** Before building any UI element, check whether shadcn has it (`npx shadcn@latest add <name>`) and read the generated file for its real props and variants; do not guess prop names. Do not edit generated files unless you must.
+- Compose primitives into small app components in `frontend/src/components` only when the same combination is used in two or more places.
+- **No hard-coded colors, font sizes, radii or shadows.** Use the theme tokens in `src/styles/index.css` through Tailwind (`bg-background`, `text-muted-foreground`, `border-border`, ...). If you need a value that does not exist, stop and ask instead of inventing one.
 - **Icons:** Phosphor only, one consistent weight and size scale.
-- **Spacing and layout:** use the spacing scale only; no arbitrary values like `mt-[13px]`. Reuse the page header and layout components from the app shell so every page looks the same.
-- **Theme:** works in light and dark through Kumo theming; never assume a background color.
+- **Spacing and layout:** use the spacing scale only; no arbitrary values like `mt-[13px]`. Reuse `PageHeader` and the app shell so every page looks the same.
+- **Theme:** works in light and dark (the `dark` class follows the OS); never assume a background color.
 - Keep the UI minimal: one primary action per view, no decorative elements, restrained motion that respects `prefers-reduced-motion`.
-- Record the tokens and components in use in `docs/DESIGN.md` and keep it current. New patterns go there first.
-- The app root uses `isolation: isolate` as Kumo requires. Check Kumo's current install docs for any other setup requirements.
+- Record components and patterns in use in `docs/DESIGN.md` and keep it current. New patterns go there first.
 
 **Code rules:**
 - Function components and hooks only. One component per file, named exports, file name matches the component.
 - Data fetching through TanStack Query hooks in `lib/api`, using types **generated from the backend OpenAPI schema**. Never hand-write types for API responses and never use `any`.
 - Every data view implements **loading, empty and error** states.
-- Accessibility is not optional: semantic elements, labelled inputs and buttons, keyboard operation, visible focus, AA contrast. Use Kumo's accessible primitives rather than re-implementing them.
+- Accessibility is not optional: semantic elements, labelled inputs and buttons, keyboard operation, visible focus, AA contrast. Use the Base UI primitives rather than re-implementing them.
 - No business logic in components. Format and derive data in small pure functions with tests.
 - No `dangerouslySetInnerHTML`. Render Markdown from the backend through a sanitising renderer.
 - No secrets in the frontend bundle. Only public config.

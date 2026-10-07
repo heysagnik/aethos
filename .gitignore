@@ -13,3 +13,5 @@ frontend/dist/
 .vercel/
 
 .vercel
+
+*.tsbuildinfo

@@ -209,3 +209,25 @@ def test_a_workspace_the_user_does_not_belong_to_is_not_found(client, user, stra
     ]
     for path in ("overview", "repos", "reviews"):
         assert client.get(f"/api/dashboard/{path}", {"workspace": "other"}).status_code == 404
+
+
+def test_repos_list_most_recently_reviewed_first(client, user, installation, repo):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.repos.models import Repository
+
+    quiet = Repository.objects.create(
+        installation=installation, github_repo_id=7001, full_name="acme/aaa-quiet"
+    )
+    busy = Repository.objects.create(
+        installation=installation, github_repo_id=7002, full_name="acme/zzz-busy"
+    )
+    old = _review(repo, trigger_comment_id=11)
+    new = _review(busy, trigger_comment_id=12)
+    type(old).objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=3))
+    type(new).objects.filter(pk=new.pk).update(created_at=timezone.now())
+    client.force_login(user)
+    names = [r["full_name"] for r in client.get("/api/dashboard/repos").json()]
+    assert names == ["acme/zzz-busy", "acme/app", quiet.full_name]

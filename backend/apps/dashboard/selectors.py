@@ -26,8 +26,10 @@ def workspace_for_user(user: User, login: str) -> Installation | None:
 
 
 def repos_for_user(user: User, workspace: Installation | None = None) -> QuerySet[Repository]:
-    installations = [workspace.pk] if workspace else installations_for_user(user).values("pk")
-    return Repository.objects.filter(installation_id__in=installations, removed_at__isnull=True)
+    installations = (
+        Installation.objects.filter(pk=workspace.pk) if workspace else installations_for_user(user)
+    )
+    return Repository.objects.filter(installation__in=installations, removed_at__isnull=True)
 
 
 def reviews_for_user(user: User, workspace: Installation | None = None) -> QuerySet[Review]:

@@ -11,19 +11,21 @@ Items marked **[verify]** depend on vendor limits or APIs that change. Check the
 
 ## Implementation notes (what was built, and where it differs from the plan below)
 
-Phase 1 is implemented. The text below is the original plan; these are the deliberate changes made while building it.
+Phase 1 is implemented. The text below is the original plan. Where it mentions Kumo, Groq, bge, the GitHub Action or OIDC, the table and notes here describe what is actually built.
 
 | Plan said | What was built | Why |
 |---|---|---|
-| Anthropic API | **Groq** (`groq` SDK, JSON mode, default `llama-3.3-70b-versatile`) | Requested. The model name, prices (`LLM_PRICES`) and JSON-mode support must be checked against Groq's current docs. |
-| pgvector embeddings for "similar code" | **BAAI bge-base-en-v1.5 run locally by the GitHub Action indexer** (`fastembed`, 768-d), uploaded with each chunk into a pgvector column + HNSW index; reviews query with the stored vectors of the changed symbols; **identifier-token matching as the automatic fallback** | Groq has no embeddings API and a Vercel function cannot hold the model. The Action runner can, for free and with no account. Using stored vectors as the query means no embedding service at review time. Limits: the query is the base-branch version of the changed code, and brand-new files have no vectors, so they use keyword matching. |
-| Index built on install | **Index built by a GitHub Action** the user adds (snippet shown in the dashboard) | Parsing a repository inside a short Vercel function is not feasible, and writing workflow files would need extra GitHub permissions. Until the index exists, reviews use the diff only and say so. |
-| Prompt caching | Not used | Groq's caching behaviour is automatic and model dependent; the prompt is ordered stable-first so it can benefit. |
-| Kumo charts | A small token-based bar series | Kumo's chart component requires ECharts; skipped to keep the bundle small. |
-| Index updates only re-send changed files | The Action parses the whole repository every run (fast, local), uploads symbols and chunks **only for files whose hash changed**, and re-sends all edges | Edges between unchanged and changed files must be re-resolved; sending them all is simpler and correct. |
+| Anthropic API | **NVIDIA NIM chat completions** (`nvidia/nemotron-3-super-120b-a12b`, JSON mode, OpenAI-compatible API, shared `NVIDIA_API_KEY`) | Requested (first Groq, then NIM). Prices (`LLM_PRICES`) are empty, so costs show $0 until you add them; JSON-mode support on NIM must be checked against NVIDIA's docs. |
+| pgvector embeddings for "similar code" | **NVIDIA NIM `nvidia/nemotron-3-embed-1b`** (2048-d) computed by the server while indexing, stored in a pgvector `halfvec(2048)` column with an HNSW index; reviews query with the stored vectors of the changed symbols; identifier-token matching is the fallback | `halfvec` keeps the HNSW index possible above 2000 dimensions. No model runs on Vercel. |
+| Index built on install | **Index built by the server** in queued steps (`index`, then `embed`): on install or repository add, on every push to the default branch, and from the dashboard's Re-index button | The repository is downloaded as a tarball with the installation token and parsed with tree-sitter; no workflow file is added to user repositories. Requires the Contents (read) permission and the Push event. |
+| Prompt caching | Not used | The prompt is ordered stable-first so provider-side caching can help if it is available. |
+| Charts | A small token-based bar series | A charting library would add ECharts-sized weight; skipped to keep the bundle small. |
+| Index updates only re-send changed files | Each index run parses the whole repository, replaces symbols and chunks **only for files whose hash changed**, and rebuilds all edges | Edges between unchanged and changed files must be re-resolved. |
 | Enclosing symbol bodies from the PR head | Bodies come from the **indexed base branch**; hunks are mapped by their old-side line numbers | Avoids fetching every changed file. The review footer notes when the index is older than the PR base. |
 | Check run publishing | Not built | Optional in the plan; needs the Checks write permission. |
 | Review modes | `aethos` and `baseline` stored per review; `manage.py compare` runs both as dry runs | Powers the savings figure on the Overview page. |
+
+Later changes: the dashboard moved from Kumo to shadcn/ui on Base UI; the GitHub Action indexer, its OIDC login and `/api/index` upload API were removed; repositories are listed most recently reviewed first; and the Aethos mascot (an olive with round glasses) is the logo and favicon.
 
 Added beyond the plan: `.aethos.yml` per-repository overrides, `manage.py show_review` (pack inspector on the command line), a CSRF-protected session API, OpenAPI-generated frontend types, and CI.
 

@@ -241,13 +241,14 @@ def overview(request: HttpRequest, days: int = 30, workspace: str = "") -> dict[
 
 @api.get("/repos", response=list[RepoOut], url_name="repos")
 def repos(request: HttpRequest, workspace: str = "") -> list[dict[str, Any]]:
-    from django.db.models import Count
+    from django.db.models import Count, F, Max
 
     scope = _workspace_or_404(request, workspace)
+    # Most recently reviewed repositories first; never-reviewed ones follow, alphabetically.
     queryset = (
         selectors.repos_for_user(_user(request), scope)
-        .annotate(n=Count("reviews"))
-        .order_by("full_name")
+        .annotate(n=Count("reviews"), last_review_at=Max("reviews__created_at"))
+        .order_by(F("last_review_at").desc(nulls_last=True), "full_name")
     )
     return [_repo_out(r, r.n) for r in queryset]
 

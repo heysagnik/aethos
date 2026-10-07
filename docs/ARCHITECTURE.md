@@ -82,7 +82,7 @@ The SPA reads `/api/dashboard/*` (overview stats, repos, review list, review det
 ## What runs where
 
 - **Vercel:** static SPA and short Django functions only. Nothing slow runs there.
-- **GitHub Actions:** parsing and embedding, the heavy work.
+- **Indexing:** server-side queue steps (`index`, then `embed`), each short and retryable.
 - **QStash:** splits a review into short retryable calls, so no single function runs long.
 - **Neon:** all state, including the vectors.
 - **NVIDIA NIM:** the only paid-per-token call, once per review (twice if the first answer is invalid).
