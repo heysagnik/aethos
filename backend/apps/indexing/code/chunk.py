@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from aethos_indexer.parse import ParsedFile, SymbolInfo
+from apps.indexing.code.parse import ParsedFile, SymbolInfo
 from core.lexical import identifier_tokens
 from core.tokens import estimate_tokens
 

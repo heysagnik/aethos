@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
-from django.conf import settings
 from django.http import Http404, HttpRequest
 from ninja import NinjaAPI, Schema
 from ninja.security import django_auth
@@ -11,32 +11,13 @@ from pydantic import Field, ValidationError
 from apps.accounts.models import User
 from apps.dashboard import selectors
 from apps.indexing.embeddings import embedding_progress
-from apps.repos.models import Installation, Repository
+from apps.repos.models import IndexStatus, Installation, Repository
 from apps.reviews.config import ReviewSettings
 from apps.reviews.models import Review
+from apps.reviews.queue import enqueue
 from core.schemas import Severity
 
 api = NinjaAPI(urls_namespace="dashboard", docs_url=None, openapi_url=None, auth=django_auth)
-
-WORKFLOW_TEMPLATE = """name: Aethos index
-on:
-  push:
-    branches: [{branch}]
-  workflow_dispatch:
-permissions:
-  contents: read
-  id-token: write
-jobs:
-  index:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - uses: {action_repo}@main
-        with:
-          api-url: {api_url}
-"""
 
 
 def _user(request: HttpRequest) -> User:
@@ -177,10 +158,6 @@ class ReviewDetail(ReviewListItem):
     error: str
 
 
-class RepoDetail(RepoOut):
-    index_workflow: str
-
-
 class SettingsPatch(Schema):
     enabled: bool | None = None
     mode: str | None = None
@@ -275,16 +252,21 @@ def repos(request: HttpRequest, workspace: str = "") -> list[dict[str, Any]]:
     return [_repo_out(r, r.n) for r in queryset]
 
 
-@api.get("/repos/{repo_id}", response=RepoDetail, url_name="repo")
+@api.get("/repos/{repo_id}", response=RepoOut, url_name="repo")
 def repo_detail(request: HttpRequest, repo_id: int) -> dict[str, Any]:
     repo = _repo_or_404(request, repo_id)
-    data = _repo_out(repo, repo.reviews.count())
-    data["index_workflow"] = WORKFLOW_TEMPLATE.format(
-        branch=repo.default_branch,
-        action_repo=settings.INDEXER_ACTION_REPO,
-        api_url=settings.APP_BASE_URL,
-    )
-    return data
+    return _repo_out(repo, repo.reviews.count())
+
+
+@api.post("/repos/{repo_id}/index", response=RepoOut, url_name="repo-index")
+def reindex(request: HttpRequest, repo_id: int) -> dict[str, Any]:
+    """Queue a fresh index of the default branch."""
+    repo = _repo_or_404(request, repo_id)
+    repo.index_status = IndexStatus.INDEXING
+    repo.save(update_fields=["index_status"])
+    enqueue("index", {"repo_id": repo.pk}, f"index-{repo.pk}-{int(time.time())}")
+    repo.refresh_from_db()
+    return _repo_out(repo, repo.reviews.count())
 
 
 @api.patch("/repos/{repo_id}/settings", response=RepoOut, url_name="repo-settings")

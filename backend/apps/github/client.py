@@ -61,6 +61,10 @@ class GitHubGateway(Protocol):
 
     def add_reaction(self, repo: str, comment_id: int, content: str) -> None: ...
 
+    def get_branch_sha(self, repo: str, branch: str) -> str: ...
+
+    def download_archive(self, repo: str, ref: str, max_bytes: int) -> bytes: ...
+
 
 def app_jwt() -> str:
     now = int(time.time())
@@ -93,6 +97,23 @@ class GitHubAPI:
         if response.status_code >= 400 and response.status_code not in ok:
             raise GitHubError(response.status_code, response.text[:300])
         return response
+
+    def download(self, path: str, max_bytes: int) -> bytes:
+        """GET a binary file, following redirects and refusing anything larger than `max_bytes`."""
+        headers = {
+            "Authorization": f"Bearer {self._token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": API_VERSION,
+        }
+        data = bytearray()
+        with self._client.stream("GET", path, headers=headers, follow_redirects=True) as response:
+            if response.status_code >= 400:
+                raise GitHubError(response.status_code, response.read().decode()[:300])
+            for chunk in response.iter_bytes():
+                data.extend(chunk)
+                if len(data) > max_bytes:
+                    raise GitHubError(413, f"Repository archive is larger than {max_bytes} bytes")
+        return bytes(data)
 
     def json(self, method: str, path: str, **kwargs: Any) -> Any:
         return self.request(method, path, **kwargs).json()
@@ -218,6 +239,16 @@ class GitHubGatewayImpl:
             f"/repos/{repo}/issues/comments/{comment_id}/reactions",
             json={"content": content},
         )
+
+    def get_branch_sha(self, repo: str, branch: str) -> str:
+        response = self._api.request(
+            "GET", f"/repos/{repo}/commits/{branch}", accept="application/vnd.github.sha"
+        )
+        return response.text.strip()
+
+    def download_archive(self, repo: str, ref: str, max_bytes: int) -> bytes:
+        """The repository at `ref` as a gzipped tarball (GitHub redirects to its CDN)."""
+        return self._api.download(f"/repos/{repo}/tarball/{ref}", max_bytes)
 
 
 def get_gateway(installation_id: int) -> GitHubGateway:

@@ -1,9 +1,6 @@
-import json
-
-from aethos_indexer.chunk import file_payload
-from aethos_indexer.graph import build_edges
-from aethos_indexer.parse import parse_file
-from aethos_indexer.upload import batched
+from apps.indexing.code.chunk import file_payload
+from apps.indexing.code.graph import build_edges
+from apps.indexing.code.parse import parse_file
 
 PY_UTILS = b'''\
 import os
@@ -140,40 +137,3 @@ def test_parse_is_deterministic_and_skips_unsupported():
     a = parse_file("app/utils.py", PY_UTILS)
     b = parse_file("app/utils.py", PY_UTILS)
     assert a.content_hash == b.content_hash and a.symbols == b.symbols
-
-
-def test_batching_respects_limits():
-    items = [{"i": i, "pad": "x" * 100} for i in range(10)]
-    by_count = list(batched(items, max_items=3, max_bytes=10_000))
-    assert [len(b) for b in by_count] == [3, 3, 3, 1]
-    by_bytes = list(batched(items, max_items=100, max_bytes=len(json.dumps(items[0])) * 2 + 5))
-    assert all(len(b) <= 2 for b in by_bytes) and sum(len(b) for b in by_bytes) == 10
-
-
-def test_embeddings_are_attached_per_chunk():
-    from aethos_indexer.embed import EMBEDDING_DIM, MAX_TEXT_CHARS, attach_embeddings
-
-    payload = file_payload(parse_file("app/utils.py", PY_UTILS))
-    seen: list[str] = []
-
-    def fake_embed(texts):
-        seen.extend(texts)
-        return [[2.0] + [0.0] * (EMBEDDING_DIM - 1) for _ in texts]
-
-    count = attach_embeddings([payload], fake_embed)
-    assert count == len(payload["chunks"]) == len(seen)
-    assert all(
-        c["embedding"][0] == 1.0 and len(c["embedding"]) == EMBEDDING_DIM for c in payload["chunks"]
-    )
-    assert any(t.startswith("app/utils.py Service.run\n") for t in seen)
-    assert all(len(t) <= MAX_TEXT_CHARS for t in seen)
-
-
-def test_wrong_embedding_size_is_rejected():
-    import pytest
-
-    from aethos_indexer.embed import attach_embeddings
-
-    payload = file_payload(parse_file("app/utils.py", PY_UTILS))
-    with pytest.raises(ValueError, match="dimensions"):
-        attach_embeddings([payload], lambda texts: [[1.0, 2.0] for _ in texts])

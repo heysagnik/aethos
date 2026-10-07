@@ -40,7 +40,18 @@ export function useRepos(workspace: string) {
 }
 
 export function useRepo(id: number) {
-  return useQuery({ queryKey: keys.repo(id), queryFn: () => api.repo(id), enabled: id > 0 });
+  return useQuery({
+    queryKey: keys.repo(id),
+    queryFn: () => api.repo(id),
+    enabled: id > 0,
+    // Follow indexing and embedding progress without a manual refresh.
+    refetchInterval: (query) => {
+      const repo = query.state.data;
+      if (!repo) return false;
+      const embedding = repo.index_status === "ready" && repo.embedded_count < repo.chunk_count;
+      return repo.index_status === "indexing" || embedding ? 5000 : false;
+    },
+  });
 }
 
 export function useReviews(query: ReviewQuery = {}) {
@@ -55,6 +66,17 @@ export function useUpdateSettings(id: number) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (patch: SettingsPatch) => api.updateSettings(id, patch),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.repo(id) });
+      void client.invalidateQueries({ queryKey: ["repos"] });
+    },
+  });
+}
+
+export function useReindex(id: number) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.reindex(id),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: keys.repo(id) });
       void client.invalidateQueries({ queryKey: ["repos"] });

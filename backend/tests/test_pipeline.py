@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 
 import pytest
 
@@ -143,7 +144,8 @@ def _comment_payload(repo, body="@aethos please review", comment_id=42, user_typ
 
 
 @pytest.fixture
-def run(monkeypatch, client, indexed_repo):
+def run(monkeypatch, client, indexed_repo, settings):
+    settings.LLM_PRICES = {settings.REVIEW_MODEL: (Decimal("1"), Decimal("1"))}
     _install_index(indexed_repo)
 
     def go(gateway: FakeGateway, fake_llm: FakeLLM, payload=None, delivery="d-1"):

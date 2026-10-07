@@ -9,7 +9,7 @@ from __future__ import annotations
 import posixpath
 from dataclasses import dataclass
 
-from aethos_indexer.parse import ParsedFile, SymbolInfo
+from apps.indexing.code.parse import ParsedFile, SymbolInfo
 
 JS_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 PY_SOURCE_ROOTS = frozenset({"src", "lib", "backend", "python"})

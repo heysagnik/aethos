@@ -10,6 +10,5 @@ GITHUB_CLIENT_ID = "client-id"
 GITHUB_CLIENT_SECRET = "client-secret"
 APP_BASE_URL = "http://testserver"
 FRONTEND_URL = "http://testserver"
-INDEX_OIDC_AUDIENCE = "http://testserver"
-GROQ_API_KEY = "test"
+NVIDIA_API_KEY = "test-key"
 ALLOWED_HOSTS = ["testserver", "localhost"]

@@ -13,7 +13,7 @@ from core import vectors
 from tests.conftest import FakeGateway, FakeLLM, make_pull
 from tests.test_pipeline import DIFF, REVIEW_JSON, _install_index
 
-DIM = 768
+DIM = 2048
 
 
 def unit(index: int) -> list[float]:
@@ -41,39 +41,36 @@ def test_embedding_field_round_trips(db, indexed_repo):
     assert Chunk.objects.filter(embedding__isnull=True).count() == 1
 
 
-def _ingest_payload(client, repo, monkeypatch, chunk):
-    from apps.indexing import auth
+def _ingest(repo, embedding):
+    from apps.indexing import services
 
-    monkeypatch.setattr(
-        auth,
-        "verify_oidc_token",
-        lambda token: auth.OidcClaims(repo.github_repo_id, repo.full_name, "refs/heads/main", "s"),
+    services.ingest_files(
+        repo,
+        "1" * 40,
+        [
+            services.FileIn(
+                path="m.py",
+                language="python",
+                content_hash="h" * 64,
+                loc=1,
+                is_test=False,
+                symbols=[],
+                chunks=[services.ChunkIn(None, 0, "x", 1, " x ", embedding)],
+            )
+        ],
     )
-    file = {
-        "path": "m.py",
-        "content_hash": "h" * 64,
-        "symbols": [],
-        "chunks": [{"text": "x", "token_count": 1, **chunk}],
-    }
-    response = client.post(
-        "/api/index/files",
-        data={"sha": "1" * 40, "files": [file]},
-        content_type="application/json",
-        HTTP_AUTHORIZATION="Bearer t",
-    )
-    assert response.status_code == 200
 
 
-def test_uploaded_embeddings_are_stored(monkeypatch, client, repo):
-    _ingest_payload(client, repo, monkeypatch, {"embedding": unit(3)})
+def test_stored_embeddings_are_counted(db, repo):
+    _ingest(repo, unit(3))
     assert Chunk.objects.get().embedding == unit(3)
     assert embeddings.embedding_progress(repo.pk) == (1, 1)
 
 
-def test_wrong_size_or_missing_embeddings_are_dropped(monkeypatch, client, repo):
-    _ingest_payload(client, repo, monkeypatch, {"embedding": [1.0, 2.0]})
+def test_wrong_size_or_missing_embeddings_are_dropped(db, repo):
+    _ingest(repo, [1.0, 2.0])
     assert Chunk.objects.get().embedding is None
-    _ingest_payload(client, repo, monkeypatch, {})
+    _ingest(repo, None)
     assert Chunk.objects.get().embedding is None
     assert embeddings.embedding_progress(repo.pk) == (0, 1)
 

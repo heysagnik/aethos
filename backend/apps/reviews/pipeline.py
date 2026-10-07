@@ -12,6 +12,7 @@ from django.db.models import Sum
 
 from apps.github import client as github_client
 from apps.github.client import GitHubError, GitHubGateway, PullInfo
+from apps.indexing import indexer
 from apps.repos.models import Repository
 from apps.reviews import context, llm
 from apps.reviews.config import CONFIG_FILE, ReviewSettings, resolve_settings
@@ -502,6 +503,8 @@ STEPS = {
     "pack": step_pack,
     "review": step_review,
     "post": step_post,
+    "index": indexer.step_index,
+    "embed": indexer.step_embed,
 }
 
 
@@ -521,6 +524,9 @@ def run_step_chain(step: str, payload: dict[str, Any]) -> None:
 def mark_failed(step: str, payload: dict[str, Any], error: str) -> None:
     """Called after QStash exhausted its retries for `step`."""
     review = None
+    if step in ("index", "embed"):
+        indexer.mark_failed(int(payload.get("repo_id", 0)))
+        return
     if "review_id" in payload:
         review = (
             Review.objects.select_related("repository__installation")

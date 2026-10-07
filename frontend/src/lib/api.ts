@@ -6,7 +6,6 @@ export type Me = Schemas["MeOut"];
 export type Workspace = Schemas["WorkspaceOut"];
 export type Overview = Schemas["OverviewOut"];
 export type Repo = Schemas["RepoOut"];
-export type RepoDetail = Schemas["RepoDetail"];
 export type ReviewListItem = Schemas["ReviewListItem"];
 export type ReviewDetail = Schemas["ReviewDetail"];
 export type Finding = Schemas["FindingOut"];
@@ -85,7 +84,8 @@ export const api = {
     request<Overview>("GET", `/api/dashboard/overview${query({ workspace, days })}`),
   repos: (workspace: string) =>
     request<Repo[]>("GET", `/api/dashboard/repos${query({ workspace })}`),
-  repo: (id: number) => request<RepoDetail>("GET", `/api/dashboard/repos/${id}`),
+  repo: (id: number) => request<Repo>("GET", `/api/dashboard/repos/${id}`),
+  reindex: (id: number) => request<Repo>("POST", `/api/dashboard/repos/${id}/index`),
   updateSettings: (id: number, patch: SettingsPatch) =>
     request<Repo>("PATCH", `/api/dashboard/repos/${id}/settings`, patch),
   reviews: ({ workspace, repoId, limit, offset }: ReviewQuery = {}) =>

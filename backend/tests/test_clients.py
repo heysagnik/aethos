@@ -151,7 +151,8 @@ def test_qstash_enqueue_publishes_with_dedup(settings, monkeypatch):
 
 
 def test_cost_and_output_parsing(settings):
-    assert llm.cost_usd("llama-3.3-70b-versatile", 1_000_000, 1_000_000) == Decimal("1.38")
+    settings.LLM_PRICES = {"priced-model": (Decimal("0.59"), Decimal("0.79"))}
+    assert llm.cost_usd("priced-model", 1_000_000, 1_000_000) == Decimal("1.38")
     assert llm.cost_usd("unknown-model", 10, 10) == 0
     fenced = '```json\n{"summary": "ok", "findings": []}\n```'
     assert isinstance(llm.parse_review(fenced), ReviewOutput)

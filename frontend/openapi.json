@@ -145,97 +145,6 @@
         "title": "OverviewOut",
         "type": "object"
       },
-      "RepoDetail": {
-        "properties": {
-          "chunk_count": {
-            "title": "Chunk Count",
-            "type": "integer"
-          },
-          "default_branch": {
-            "title": "Default Branch",
-            "type": "string"
-          },
-          "edge_count": {
-            "title": "Edge Count",
-            "type": "integer"
-          },
-          "embedded_count": {
-            "title": "Embedded Count",
-            "type": "integer"
-          },
-          "file_count": {
-            "title": "File Count",
-            "type": "integer"
-          },
-          "full_name": {
-            "title": "Full Name",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "index_status": {
-            "title": "Index Status",
-            "type": "string"
-          },
-          "index_workflow": {
-            "title": "Index Workflow",
-            "type": "string"
-          },
-          "indexed_sha": {
-            "title": "Indexed Sha",
-            "type": "string"
-          },
-          "is_private": {
-            "title": "Is Private",
-            "type": "boolean"
-          },
-          "last_indexed_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Indexed At"
-          },
-          "review_count": {
-            "title": "Review Count",
-            "type": "integer"
-          },
-          "settings": {
-            "additionalProperties": true,
-            "title": "Settings",
-            "type": "object"
-          },
-          "symbol_count": {
-            "title": "Symbol Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "full_name",
-          "is_private",
-          "default_branch",
-          "index_status",
-          "indexed_sha",
-          "last_indexed_at",
-          "file_count",
-          "symbol_count",
-          "edge_count",
-          "chunk_count",
-          "embedded_count",
-          "review_count",
-          "settings",
-          "index_workflow"
-        ],
-        "title": "RepoDetail",
-        "type": "object"
-      },
       "RepoOut": {
         "properties": {
           "chunk_count": {
@@ -1062,7 +971,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RepoDetail"
+                  "$ref": "#/components/schemas/RepoOut"
                 }
               }
             },
@@ -1075,6 +984,41 @@
           }
         ],
         "summary": "Repo Detail"
+      }
+    },
+    "/api/dashboard/repos/{repo_id}/index": {
+      "post": {
+        "description": "Queue a fresh index of the default branch.",
+        "operationId": "apps_dashboard_api_reindex",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "repo_id",
+            "required": true,
+            "schema": {
+              "title": "Repo Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepoOut"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ],
+        "summary": "Reindex"
       }
     },
     "/api/dashboard/repos/{repo_id}/settings": {

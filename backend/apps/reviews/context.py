@@ -261,7 +261,7 @@ def _similar_by_embedding(
         for query in queries:
             ranked = pool.annotate(
                 distance=RawSQL(
-                    '"indexing_chunk"."embedding" <=> %s::vector',
+                    '"indexing_chunk"."embedding" <=> %s::halfvec',
                     [vectors.to_text(query)],
                     output_field=FloatField(),
                 )

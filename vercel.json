@@ -5,7 +5,7 @@
   "buildCommand": "cd frontend && npx --yes pnpm@9.15.1 build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "api/index.py": { "maxDuration": 60, "includeFiles": "backend/**" }
+    "api/index.py": { "maxDuration": 300, "includeFiles": "backend/**" }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },

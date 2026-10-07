@@ -1,7 +1,7 @@
 .PHONY: check lint types test migrations api-types frontend-check dev-backend dev-frontend
 
 export DJANGO_SETTINGS_MODULE ?= aethos.settings.test
-export MYPYPATH := backend:indexer
+export MYPYPATH := backend
 export PYTHONPATH := backend
 
 check: lint types test migrations frontend-check
@@ -11,7 +11,7 @@ lint:
 	uv run ruff format --check .
 
 types:
-	uv run mypy backend/core backend/apps indexer/aethos_indexer
+	uv run mypy backend/core backend/apps
 
 test:
 	uv run pytest

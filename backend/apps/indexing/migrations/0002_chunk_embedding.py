@@ -11,7 +11,7 @@ def create_hnsw_index(apps, schema_editor):
     if schema_editor.connection.vendor == "postgresql":
         schema_editor.execute(
             "CREATE INDEX IF NOT EXISTS indexing_chunk_embedding_hnsw "
-            "ON indexing_chunk USING hnsw (embedding vector_cosine_ops)"
+            "ON indexing_chunk USING hnsw (embedding halfvec_cosine_ops)"
         )
 
 

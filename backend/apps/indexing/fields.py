@@ -17,7 +17,7 @@ class EmbeddingField(models.Field):
 
     def db_type(self, connection: BaseDatabaseWrapper) -> str:
         if connection.vendor == "postgresql":
-            return f"vector({settings.EMBEDDING_DIM})"
+            return f"halfvec({settings.EMBEDDING_DIM})"
         return "text"
 
     def get_prep_value(self, value: Any) -> str | None:

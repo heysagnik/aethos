@@ -123,6 +123,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard/repos/{repo_id}/index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reindex
+         * @description Queue a fresh index of the default branch.
+         */
+        post: operations["apps_dashboard_api_reindex"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard/repos/{repo_id}/settings": {
         parameters: {
             query?: never;
@@ -248,41 +268,6 @@ export interface components {
             /** Tokens Out */
             tokens_out: number;
             verdicts: components["schemas"]["VerdictCounts"];
-        };
-        /** RepoDetail */
-        RepoDetail: {
-            /** Chunk Count */
-            chunk_count: number;
-            /** Default Branch */
-            default_branch: string;
-            /** Edge Count */
-            edge_count: number;
-            /** Embedded Count */
-            embedded_count: number;
-            /** File Count */
-            file_count: number;
-            /** Full Name */
-            full_name: string;
-            /** Id */
-            id: number;
-            /** Index Status */
-            index_status: string;
-            /** Index Workflow */
-            index_workflow: string;
-            /** Indexed Sha */
-            indexed_sha: string;
-            /** Is Private */
-            is_private: boolean;
-            /** Last Indexed At */
-            last_indexed_at: string | null;
-            /** Review Count */
-            review_count: number;
-            /** Settings */
-            settings: {
-                [key: string]: unknown;
-            };
-            /** Symbol Count */
-            symbol_count: number;
         };
         /** RepoOut */
         RepoOut: {
@@ -649,7 +634,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RepoDetail"];
+                    "application/json": components["schemas"]["RepoOut"];
+                };
+            };
+        };
+    };
+    apps_dashboard_api_reindex: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                repo_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepoOut"];
                 };
             };
         };

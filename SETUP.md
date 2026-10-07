@@ -14,7 +14,6 @@ You give me (or put in Vercel's environment settings) the values marked **SECRET
 | **Vercel** | Hosts the dashboard (static) and the Django API (Python function) | Yes (Hobby, non-commercial use) |
 | **Neon** | Postgres database | Yes |
 | **Upstash** | QStash: delivers each review step as a short request | Yes |
-| **Groq** | The LLM that writes the review | Yes, rate limited |
 
 ## 2. Create the resources and collect the values
 
@@ -37,21 +36,19 @@ You give me (or put in Vercel's environment settings) the values marked **SECRET
 | `QSTASH_NEXT_SIGNING_KEY` **SECRET** | next signing key |
 | `QUEUE_MODE` | `qstash` |
 
-### Groq (LLM)
-1. Create an API key at console.groq.com.
+### NVIDIA NIM (review model and embeddings)
+One NVIDIA key covers both. The review is written by `nvidia/nemotron-3-super-120b-a12b` through NIM chat completions (`REVIEW_MODEL`, `LLM_TIMEOUT_SECONDS`). Cost figures in the dashboard come from `LLM_PRICES` in `backend/aethos/settings/base.py`; an unlisted model shows $0.
+
+Embeddings power the "similar existing code" part of each review. Aethos embeds every code chunk while indexing with `nvidia/nemotron-3-embed-1b` (2048 dimensions) through NVIDIA's hosted API, and stores the vectors in Neon with pgvector (a `halfvec` column). At review time it searches with the stored vectors of the code being changed.
+
+1. Create an API key at https://build.nvidia.com.
 
 | Variable | Value |
 |---|---|
-| `GROQ_API_KEY` **SECRET** | your key |
-| `REVIEW_MODEL` | default `llama-3.3-70b-versatile`. Any Groq chat model that supports JSON mode works. Check Groq's current model list and prices first. |
+| `NVIDIA_API_KEY` **SECRET** | your key (starts with `nvapi-`) |
+| `EMBEDDING_MODEL` | default `nvidia/nemotron-3-embed-1b` |
 
-The price table in `backend/aethos/settings/base.py` (`LLM_PRICES`) drives the cost figures shown in the dashboard. Update it if you change model or if Groq's prices change. An unknown model shows a cost of $0.
-
-### Embeddings (no account needed)
-Embeddings power the "similar existing code" part of each review. They use the BAAI **bge-base-en-v1.5** model (768 dimensions), which the GitHub Action indexer runs on the Actions runner itself (via `fastembed`, no API key, no hosted service). The vectors are uploaded with the code chunks and stored in Neon with pgvector. At review time Aethos searches with the stored vectors of the code being changed, so nothing is embedded on Vercel.
-
-- The first indexing run downloads the model (~200 MB, cached between runs by the Action) and embeds every chunk; later runs embed only changed files.
-- Set the workflow input `embed: "false"` to skip embeddings. Aethos then uses keyword matching.
+- Without a key, indexing still works and reviews use keyword matching.
 - New files in a PR have no stored vectors yet, so reviews of PRs that only add files use keyword matching.
 
 ### Vercel (hosting)
@@ -66,8 +63,6 @@ Embeddings power the "similar existing code" part of each review. They use the B
 | `ALLOWED_HOSTS` | your domain, for example `aethos.vercel.app` |
 | `APP_BASE_URL` | `https://<your domain>` |
 | `FRONTEND_URL` | same as `APP_BASE_URL` |
-| `INDEX_OIDC_AUDIENCE` | same as `APP_BASE_URL` |
-| `INDEXER_ACTION_REPO` | `<github user>/<this repo>/action`, shown to users in the indexing snippet |
 
 ### GitHub App (the bot)
 Create it at GitHub → Settings → Developer settings → GitHub Apps → New. Use these settings exactly:
@@ -123,30 +118,15 @@ After creating it:
    (Run `migrate` again after any release that adds a migration.)
 3. Open the site and click **Sign in with GitHub**. A new user is asked to install the app: pick an account and its repositories, finish, and you land in that account's workspace. Use **Add GitHub account** in the sidebar to add more workspaces.
 
-## 4. Build the code index (once per repository)
+## 4. The code index
 
-Aethos works without an index but then only sees the diff. To give it codebase context, add this to the repository as `.github/workflows/aethos-index.yml` (the dashboard's repository page shows a copy-paste version with your values filled in):
+Aethos works without an index but then only sees the diff. The server builds the index itself, so there is nothing to add to your repositories:
 
-```yaml
-name: Aethos index
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-permissions:
-  contents: read
-  id-token: write
-jobs:
-  index:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: <github user>/<this repo>/action@main
-        with:
-          api-url: https://<your domain>
-```
+- When you install the app or add repositories, each one is indexed automatically.
+- Every push to the default branch re-indexes it. This needs the **Push** event: in the GitHub App's settings, under **Permissions & events > Subscribe to events**, tick **Push** (the app also needs **Contents: Read-only**).
+- The repository page has an **Index now / Re-index** button.
 
-The repository that contains `action/` must be reachable by the installing repository (public, or internal/private with Actions access granted). Run the workflow once with **Run workflow**; the dashboard then shows the index as ready.
+The page shows the index as ready as soon as the code is parsed, then reports embedding progress while NVIDIA NIM vectors are filled in.
 
 ## 5. Use it
 
@@ -183,12 +163,12 @@ Inspect what was sent to the model for any review: `manage.py show_review <id>` 
 
 I could not verify these without live credentials. Each is a one-line fix if the service behaves differently from its documentation.
 
-- [ ] **Vercel Python limits.** Function duration (set to 60 s in `vercel.json`; Hobby may cap lower), bundle size, and that the `/api/(.*)` rewrite hands Django the original request path. If requests 404 inside Django, this is the first place to look.
+- [ ] **Vercel Python limits.** Function duration (set to 300 s in `vercel.json`; Hobby may cap lower), bundle size, and that the `/api/(.*)` rewrite hands Django the original request path. If requests 404 inside Django, this is the first place to look.
 - [ ] **QStash delivery.** A comment should produce four step calls (`triage`, `pack`, `review`, `post`). Signature verification uses `APP_BASE_URL` + the request path, so `APP_BASE_URL` must be the exact public URL.
-- [ ] **GitHub OIDC for the indexer.** The token audience must equal `INDEX_OIDC_AUDIENCE`. The Action requests it for `--api-url`, so they match when `INDEX_OIDC_AUDIENCE` equals `APP_BASE_URL`.
-- [ ] **Groq JSON mode.** The review call asks for a JSON object. If your chosen model rejects `response_format`, pick another model or tell me; the fallback is prompt-only JSON, which the parser already handles.
-- [ ] **Groq rate limits.** Free keys have per-minute token limits. A 12,000-token context fits, but concurrent reviews can hit `429`; QStash will retry the step.
-- [ ] **Embeddings.** After the first index, the repository page should say all code chunks have embeddings. If not, check the Action log for "Embedded N code chunk(s)" (the model download or `fastembed` install may have failed; the index still uploads without vectors).
+- [ ] **Indexing.** Index a repository from its page. A run is one `index` step followed by `embed` steps; if a large repository times out, raise `maxDuration` in `vercel.json` or lower `INDEX_MAX_FILES`. The GitHub App must have **Contents: Read-only** and subscribe to **Push**.
+- [ ] **Review model JSON mode.** The review call asks for a JSON object (`response_format`). If NIM rejects it for your model, tell me; the parser already handles fenced JSON and strips `<think>` blocks. Nemotron is a reasoning model, so check latency against `LLM_TIMEOUT_SECONDS` and Vercel's `maxDuration`.
+- [ ] **NIM rate limits.** Hosted NIM keys are rate limited; concurrent reviews can hit `429`, and QStash retries the step.
+- [ ] **Embeddings.** After indexing, the repository page should report all code chunks embedded. If not, check the `embed` step logs (a missing or invalid `NVIDIA_API_KEY`, or NIM rate limits; steps retry through QStash). I could not confirm NVIDIA's exact request fields from its docs, so check the first real call.
 - [ ] **pgvector on Neon.** The migration runs `CREATE EXTENSION IF NOT EXISTS vector`; I tested the migration, HNSW index and nearest-neighbour query on a local Postgres 16-series build with pgvector 0.6.2 but not on Neon itself.
 - [ ] **Neon cold start.** The first request after idle can take a second or two.
 - [ ] **Dashboard look.** The frontend builds, type-checks and passes its tests, but I have not looked at it in a browser. Open `/` and `/app` in light and dark mode and tell me what to adjust.

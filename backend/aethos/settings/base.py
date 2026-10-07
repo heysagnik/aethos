@@ -103,28 +103,28 @@ QSTASH_TOKEN = env("QSTASH_TOKEN", "")
 QSTASH_CURRENT_SIGNING_KEY = env("QSTASH_CURRENT_SIGNING_KEY", "")
 QSTASH_NEXT_SIGNING_KEY = env("QSTASH_NEXT_SIGNING_KEY", "")
 
-GROQ_API_KEY = env("GROQ_API_KEY", "")
-REVIEW_MODEL = env("REVIEW_MODEL", "llama-3.3-70b-versatile")
-LLM_TIMEOUT_SECONDS = float(env("LLM_TIMEOUT_SECONDS", "45"))
+# Reviews use NVIDIA NIM chat completions with the same NVIDIA_API_KEY as embeddings (set below).
+REVIEW_MODEL = env("REVIEW_MODEL", "nvidia/nemotron-3-super-120b-a12b")
+LLM_TIMEOUT_SECONDS = float(env("LLM_TIMEOUT_SECONDS", "120"))
 LLM_MAX_OUTPUT_TOKENS = int(env("LLM_MAX_OUTPUT_TOKENS", "3000"))
-# USD per 1M tokens (input, output). Verify against Groq's pricing page before relying on it.
-LLM_PRICES: dict[str, tuple[Decimal, Decimal]] = {
-    "llama-3.3-70b-versatile": (Decimal("0.59"), Decimal("0.79")),
-    "llama-3.1-8b-instant": (Decimal("0.05"), Decimal("0.08")),
-}
+# USD per 1M tokens (input, output). Hosted NIM trial usage has no listed price, so an unknown
+# model costs $0 in the dashboard. Add an entry here if you pay for a model.
+LLM_PRICES: dict[str, tuple[Decimal, Decimal]] = {}
 
-# Embeddings: the GitHub Action indexer computes BAAI bge-base-en-v1.5 vectors (768-d) and uploads
-# them with each chunk; the server never calls an embedding service. Reviews search with the
-# stored vectors of the code being changed. Chunks without a vector use identifier-token matching.
-# The dimension is fixed by the model and by the database column.
-EMBEDDING_DIM = 768
+# Embeddings: NVIDIA NIM (hosted) computes nvidia/nemotron-3-embed-1b vectors for every code chunk
+# while a repository is indexed. Reviews search with the stored vectors of the code being changed.
+# Chunks without a vector use identifier-token matching. The dimension is fixed by the model and
+# by the database column.
+NVIDIA_API_KEY = env("NVIDIA_API_KEY", "")
+NVIDIA_BASE_URL = env("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1").rstrip("/")
+EMBEDDING_MODEL = env("EMBEDDING_MODEL", "nvidia/nemotron-3-embed-1b")
+EMBEDDING_DIM = 2048
+EMBED_BATCH_SIZE = int(env("EMBED_BATCH_SIZE", "32"))
+EMBED_BATCHES_PER_STEP = int(env("EMBED_BATCHES_PER_STEP", "4"))
 EMBED_MIN_SIMILARITY = float(env("EMBED_MIN_SIMILARITY", "0.6"))
-
-# Shown in the dashboard's indexing workflow snippet: <owner>/<repo>/<path to action dir>.
-INDEXER_ACTION_REPO = env("INDEXER_ACTION_REPO", "OWNER/aethos/action")
-
-# GitHub Actions OIDC token audience the indexer must request.
-INDEX_OIDC_AUDIENCE = env("INDEX_OIDC_AUDIENCE", APP_BASE_URL)
+# Indexing limits.
+INDEX_MAX_ARCHIVE_BYTES = int(env("INDEX_MAX_ARCHIVE_BYTES", str(60_000_000)))
+INDEX_MAX_FILES = int(env("INDEX_MAX_FILES", "4000"))
 
 # Review defaults (overridable per repository and via .aethos.yml).
 REVIEW_DEFAULTS = {

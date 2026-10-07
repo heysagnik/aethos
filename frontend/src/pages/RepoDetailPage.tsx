@@ -1,4 +1,4 @@
-import { ArrowSquareOutIcon, CopyIcon } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon, ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useParams } from "react-router-dom";
@@ -17,9 +17,9 @@ import { BackLink } from "../components/BackLink";
 import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
 import { ReviewsTable } from "../components/ReviewsTable";
-import type { RepoDetail, SettingsPatch } from "../lib/api";
+import type { Repo, SettingsPatch } from "../lib/api";
 import { formatNumber, shortSha, timeAgo } from "../lib/format";
-import { useRepo, useReviews, useUpdateSettings } from "../lib/queries";
+import { useReindex, useRepo, useReviews, useUpdateSettings } from "../lib/queries";
 import { useWorkspaceSlug } from "../lib/workspace";
 
 export function splitList(text: string): string[] {
@@ -39,7 +39,7 @@ interface FormState {
   highRiskPaths: string;
 }
 
-function initialState(repo: RepoDetail): FormState {
+function initialState(repo: Repo): FormState {
   const s = repo.settings;
   const list = (value: unknown) => (Array.isArray(value) ? value.join(", ") : "");
   return {
@@ -65,7 +65,7 @@ export function buildPatch(state: FormState): SettingsPatch {
   };
 }
 
-function SettingsForm({ repo }: { repo: RepoDetail }) {
+function SettingsForm({ repo }: { repo: Repo }) {
   const [state, setState] = useState<FormState>(() => initialState(repo));
   const update = useUpdateSettings(repo.id);
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -156,13 +156,15 @@ function SettingsForm({ repo }: { repo: RepoDetail }) {
   );
 }
 
-function IndexCard({ repo }: { repo: RepoDetail }) {
-  const copy = () => {
-    void navigator.clipboard
-      .writeText(repo.index_workflow)
-      .then(() => toast.success("Workflow copied"))
-      .catch(() => toast.error("Could not copy"));
-  };
+function IndexCard({ repo }: { repo: Repo }) {
+  const reindex = useReindex(repo.id);
+  const busy = repo.index_status === "indexing" || reindex.isPending;
+  const embedding = repo.index_status === "ready" && repo.embedded_count < repo.chunk_count;
+  const run = () =>
+    reindex.mutate(undefined, {
+      onSuccess: () => toast.success("Indexing started"),
+      onError: (error) => toast.error("Could not start indexing", { description: error.message }),
+    });
   return (
     <Surface className="flex flex-col gap-4 px-5 py-4">
       <div className="flex items-center justify-between gap-2">
@@ -171,46 +173,41 @@ function IndexCard({ repo }: { repo: RepoDetail }) {
       </div>
       {repo.index_status === "ready" ? (
         <>
-        <Text variant="secondary" size="sm">
-          {formatNumber(repo.file_count)} files, {formatNumber(repo.symbol_count)} symbols and{" "}
-          {formatNumber(repo.edge_count)} dependencies at {shortSha(repo.indexed_sha)}
-          {repo.last_indexed_at ? `, updated ${timeAgo(repo.last_indexed_at)}` : ""}. Pushes to{" "}
-          {repo.default_branch} refresh only the files that changed.
-        </Text>
-        <Text variant="secondary" size="sm">
-          {repo.chunk_count === 0
-            ? "No code chunks yet."
-            : repo.embedded_count >= repo.chunk_count
-              ? `Semantic search is ready: all ${formatNumber(repo.chunk_count)} code chunks have embeddings.`
-              : `Semantic search covers ${formatNumber(repo.embedded_count)} of ${formatNumber(repo.chunk_count)} code chunks. Re-run the indexing workflow with embeddings enabled; the rest use keyword matching.`}
-        </Text>
+          <Text variant="secondary" size="sm">
+            {formatNumber(repo.file_count)} files, {formatNumber(repo.symbol_count)} symbols and{" "}
+            {formatNumber(repo.edge_count)} dependencies at {shortSha(repo.indexed_sha)}
+            {repo.last_indexed_at ? `, updated ${timeAgo(repo.last_indexed_at)}` : ""}. Pushes to{" "}
+            {repo.default_branch} refresh only the files that changed.
+          </Text>
+          <Text variant="secondary" size="sm">
+            {repo.chunk_count === 0
+              ? "No code chunks yet."
+              : embedding
+                ? `Embedding code with NVIDIA Nemotron: ${formatNumber(repo.embedded_count)} of ${formatNumber(repo.chunk_count)} chunks done. Reviews use keyword matching for the rest.`
+                : `Semantic search is ready: all ${formatNumber(repo.chunk_count)} code chunks have embeddings.`}
+          </Text>
         </>
+      ) : repo.index_status === "indexing" ? (
+        <Text variant="secondary" size="sm">
+          Reading {repo.default_branch} and building the index. This page updates on its own.
+        </Text>
       ) : (
-        <Alert>
-          <AlertTitle>Add the indexing workflow</AlertTitle>
+        <Alert variant={repo.index_status === "failed" ? "destructive" : "default"}>
+          <AlertTitle>
+            {repo.index_status === "failed" ? "Indexing failed" : "Not indexed yet"}
+          </AlertTitle>
           <AlertDescription>
-            {`Until the index is built, Aethos reviews only the diff. Add this file as .github/workflows/aethos-index.yml on ${repo.default_branch}; it runs on every push.`}
+            Until the index is built, Aethos reviews only the diff. Start indexing to give reviews
+            the surrounding code.
           </AlertDescription>
         </Alert>
       )}
-      <details className="group">
-        <summary className="cursor-pointer text-foreground underline-offset-4 hover:underline">
-          <Text as="span" variant="body" size="sm">
-            Show indexing workflow
-          </Text>
-        </summary>
-        <div className="mt-3 flex flex-col gap-2">
-          <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
-            {repo.index_workflow}
-          </pre>
-          <div>
-            <Button size="sm" variant="outline" onClick={copy}>
-              <CopyIcon />
-              Copy workflow
-            </Button>
-          </div>
-        </div>
-      </details>
+      <div>
+        <Button size="sm" variant="outline" disabled={busy} onClick={run}>
+          <ArrowsClockwiseIcon />
+          {repo.index_status === "ready" ? "Re-index" : "Index now"}
+        </Button>
+      </div>
     </Surface>
   );
 }

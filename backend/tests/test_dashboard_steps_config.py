@@ -89,10 +89,7 @@ def test_repo_and_review_detail(client, user, repo):
     repos = client.get("/api/dashboard/repos").json()
     assert repos[0]["full_name"] == "acme/app" and repos[0]["review_count"] == 1
     detail = client.get(f"/api/dashboard/repos/{repo.pk}").json()
-    assert (
-        "id-token: write" in detail["index_workflow"]
-        and "branches: [main]" in detail["index_workflow"]
-    )
+    assert detail["full_name"] == "acme/app" and "index_workflow" not in detail
     body = client.get(f"/api/dashboard/reviews/{review.pk}").json()
     assert body["pr_url"] == "https://github.com/acme/app/pull/1"
     assert body["usage"][0]["step"] == "review" and body["pack"] == {"items": [], "dropped": []}
