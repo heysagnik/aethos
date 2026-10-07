@@ -129,6 +129,7 @@ def test_app_jwt_and_installation_token_cache(settings, monkeypatch):
 def test_qstash_enqueue_publishes_with_dedup(settings, monkeypatch):
     settings.QUEUE_MODE = "qstash"
     settings.QSTASH_TOKEN = "t"
+    settings.QSTASH_URL = "https://qstash-us-east-1.upstash.io"
     published = {}
 
     class FakeMessage:
@@ -136,11 +137,13 @@ def test_qstash_enqueue_publishes_with_dedup(settings, monkeypatch):
             published.update(kwargs)
 
     class FakeQStash:
-        def __init__(self, token):
+        def __init__(self, token, base_url=None):
+            published["base_url"] = base_url
             self.message = FakeMessage()
 
     monkeypatch.setattr(queue, "QStash", FakeQStash)
     queue.enqueue("pack", {"review_id": 3}, "pack:3 x")
+    assert published["base_url"] == "https://qstash-us-east-1.upstash.io"
     assert published["url"] == "http://testserver/api/steps/pack"
     assert published["body"] == {"review_id": 3}
     assert published["retries"] == queue.STEP_RETRIES
