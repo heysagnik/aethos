@@ -1,7 +1,7 @@
 import { Badge, Button, Empty, Meter, Surface, Tabs, Text } from "@cloudflare/kumo";
 import { useState } from "react";
 import { GitHubIcon } from "../components/GitHubIcon";
-import { BarSeries } from "../components/BarSeries";
+import { BarSeries, fillDays } from "../components/BarSeries";
 import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
 import { ReviewsTable } from "../components/ReviewsTable";
@@ -18,10 +18,10 @@ const RANGES = [
 ];
 
 const VERDICT_ROWS = [
-  { key: "ready", label: "Ready to merge", variant: "success" },
-  { key: "ready_with_suggestions", label: "Ready, with suggestions", variant: "info" },
-  { key: "not_ready", label: "Not ready", variant: "error" },
-  { key: "inconclusive", label: "Inconclusive", variant: "neutral" },
+  { key: "ready", label: "Ready to merge", variant: "success", bar: "bg-kumo-success" },
+  { key: "ready_with_suggestions", label: "Ready, with suggestions", variant: "info", bar: "bg-kumo-info" },
+  { key: "not_ready", label: "Not ready", variant: "error", bar: "bg-kumo-danger" },
+  { key: "inconclusive", label: "Inconclusive", variant: "neutral", bar: "bg-kumo-line" },
 ] as const;
 
 export function OverviewPage() {
@@ -95,11 +95,15 @@ export function OverviewPage() {
                             {data.verdicts[row.key]}
                           </Text>
                         </div>
-                        <Meter
-                          label={row.label}
-                          showValue={false}
-                          value={(100 * data.verdicts[row.key]) / postedTotal}
-                        />
+                        <div
+                          className="h-1.5 w-full overflow-hidden rounded-full bg-kumo-recessed"
+                          role="presentation"
+                        >
+                          <div
+                            className={`h-full rounded-full ${row.bar}`}
+                            style={{ width: `${(100 * data.verdicts[row.key]) / postedTotal}%` }}
+                          />
+                        </div>
                       </div>
                     ))}
                   </Surface>
@@ -109,7 +113,7 @@ export function OverviewPage() {
                       <Text variant="heading">Reviews per day</Text>
                       <BarSeries
                         ariaLabel="Reviews per day"
-                        points={data.series.map((p) => ({ label: p.date, value: p.reviews }))}
+                        points={fillDays(data.series, days)}
                       />
                     </Surface>
                     <Surface className="flex flex-col gap-3 px-4 py-3">

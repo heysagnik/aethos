@@ -76,8 +76,7 @@ function WorkspaceSwitcher({ workspaces, current }: { workspaces: Workspace[]; c
   return (
     <div className="flex flex-col gap-2 px-2">
       <Select
-        label="Workspace"
-        hideLabel
+        aria-label="Workspace"
         value={current}
         items={items}
         onValueChange={(value) => {
@@ -151,7 +150,7 @@ export function AppShell() {
   ];
 
   return (
-    <Sidebar.Provider defaultOpen>
+    <Sidebar.Provider defaultOpen contained>
       <Sidebar>
         <Sidebar.Header>
           <Brand />
