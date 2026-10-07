@@ -1,18 +1,18 @@
-import {
-  Banner,
-  Button,
-  Input,
-  LinkButton,
-  Select,
-  Surface,
-  Switch,
-  Text,
-  useKumoToastManager,
-} from "@cloudflare/kumo";
 import { ArrowSquareOutIcon, CopyIcon } from "@phosphor-icons/react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { useParams } from "react-router-dom";
+import { LinkButton } from "../components/AppLink";
 import { IndexStatusBadge } from "../components/Badges";
+import { Field } from "../components/Field";
+import { SimpleSelect } from "../components/SimpleSelect";
+import { Surface } from "../components/Surface";
+import { Text } from "../components/Text";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { BackLink } from "../components/BackLink";
 import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
@@ -68,44 +68,49 @@ export function buildPatch(state: FormState): SettingsPatch {
 function SettingsForm({ repo }: { repo: RepoDetail }) {
   const [state, setState] = useState<FormState>(() => initialState(repo));
   const update = useUpdateSettings(repo.id);
-  const toasts = useKumoToastManager();
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setState((current) => ({ ...current, [key]: value }));
 
   const save = () =>
     update.mutate(buildPatch(state), {
-      onSuccess: () => toasts.add({ title: "Settings saved", variant: "success" }),
-      onError: (error) =>
-        toasts.add({ title: "Could not save settings", description: error.message, variant: "error" }),
+      onSuccess: () => toast.success("Settings saved"),
+      onError: (error) => toast.error("Could not save settings", { description: error.message }),
     });
 
   return (
     <Surface className="flex flex-col gap-4 px-5 py-4">
       <Text variant="heading">Review settings</Text>
-      <Switch
-        label="Respond to @aethos-agent mentions"
-        checked={state.enabled}
-        onCheckedChange={(checked) => set("enabled", checked)}
-      />
-      <Select
-        label="Context mode"
-        hideLabel={false}
-        className="w-64"
-        value={state.mode}
-        items={{ aethos: "Aethos (indexed context)", baseline: "Baseline (whole files, for comparison)" }}
-        onValueChange={(value) => set("mode", value ?? "aethos")}
-      />
+      <div className="flex items-center gap-2">
+        <Switch
+          id="repo-enabled"
+          checked={state.enabled}
+          onCheckedChange={(checked) => set("enabled", checked)}
+        />
+        <Label htmlFor="repo-enabled">Respond to @aethos-agent mentions</Label>
+      </div>
+      <Field label="Context mode">
+        <SimpleSelect
+          className="w-72"
+          value={state.mode}
+          items={{
+            aethos: "Aethos (indexed context)",
+            baseline: "Baseline (whole files, for comparison)",
+          }}
+          onValueChange={(value) => set("mode", value)}
+        />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Max inline comments">
         <Input
-          label="Max inline comments"
           type="number"
           min={1}
           max={50}
           value={state.maxComments}
           onChange={(event) => set("maxComments", event.target.value)}
         />
+        </Field>
+        <Field label="Min confidence (0 to 1)">
         <Input
-          label="Min confidence (0 to 1)"
           type="number"
           step="0.05"
           min={0}
@@ -113,29 +118,37 @@ function SettingsForm({ repo }: { repo: RepoDetail }) {
           value={state.minConfidence}
           onChange={(event) => set("minConfidence", event.target.value)}
         />
+        </Field>
+        <Field label="Context budget (tokens)">
         <Input
-          label="Context budget (tokens)"
           type="number"
           min={2000}
           max={100000}
           value={state.packTokens}
           onChange={(event) => set("packTokens", event.target.value)}
         />
+        </Field>
       </div>
-      <Input
+      <Field
         label="Ignore paths"
         description="Comma-separated globs, for example dist/**, **/*.generated.ts"
-        value={state.ignorePaths}
-        onChange={(event) => set("ignorePaths", event.target.value)}
-      />
-      <Input
+      >
+        <Input
+          value={state.ignorePaths}
+          onChange={(event) => set("ignorePaths", event.target.value)}
+        />
+      </Field>
+      <Field
         label="High-risk paths"
         description="Changes here raise the review risk, for example src/auth/**"
-        value={state.highRiskPaths}
-        onChange={(event) => set("highRiskPaths", event.target.value)}
-      />
+      >
+        <Input
+          value={state.highRiskPaths}
+          onChange={(event) => set("highRiskPaths", event.target.value)}
+        />
+      </Field>
       <div>
-        <Button variant="primary" loading={update.isPending} onClick={save}>
+        <Button disabled={update.isPending} onClick={save}>
           Save settings
         </Button>
       </div>
@@ -144,12 +157,11 @@ function SettingsForm({ repo }: { repo: RepoDetail }) {
 }
 
 function IndexCard({ repo }: { repo: RepoDetail }) {
-  const toasts = useKumoToastManager();
   const copy = () => {
     void navigator.clipboard
       .writeText(repo.index_workflow)
-      .then(() => toasts.add({ title: "Workflow copied", variant: "success" }))
-      .catch(() => toasts.add({ title: "Could not copy", variant: "error" }));
+      .then(() => toast.success("Workflow copied"))
+      .catch(() => toast.error("Could not copy"));
   };
   return (
     <Surface className="flex flex-col gap-4 px-5 py-4">
@@ -174,24 +186,26 @@ function IndexCard({ repo }: { repo: RepoDetail }) {
         </Text>
         </>
       ) : (
-        <Banner
-          variant="alert"
-          title="Add the indexing workflow"
-          description={`Until the index is built, Aethos reviews only the diff. Add this file as .github/workflows/aethos-index.yml on ${repo.default_branch}; it runs on every push.`}
-        />
+        <Alert>
+          <AlertTitle>Add the indexing workflow</AlertTitle>
+          <AlertDescription>
+            {`Until the index is built, Aethos reviews only the diff. Add this file as .github/workflows/aethos-index.yml on ${repo.default_branch}; it runs on every push.`}
+          </AlertDescription>
+        </Alert>
       )}
       <details className="group">
-        <summary className="cursor-pointer text-kumo-link">
+        <summary className="cursor-pointer text-foreground underline-offset-4 hover:underline">
           <Text as="span" variant="body" size="sm">
             Show indexing workflow
           </Text>
         </summary>
         <div className="mt-3 flex flex-col gap-2">
-          <pre className="overflow-x-auto rounded-md bg-kumo-recessed p-3 text-xs text-kumo-default">
+          <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
             {repo.index_workflow}
           </pre>
           <div>
-            <Button size="sm" icon={<CopyIcon />} onClick={copy}>
+            <Button size="sm" variant="outline" onClick={copy}>
+              <CopyIcon />
               Copy workflow
             </Button>
           </div>
@@ -217,11 +231,8 @@ export function RepoDetailPage() {
             title={data.full_name}
             description={`${data.is_private ? "Private" : "Public"} repository on ${data.default_branch}`}
             actions={
-              <LinkButton
-                href={`https://github.com/${data.full_name}`}
-                external
-                icon={<ArrowSquareOutIcon />}
-              >
+              <LinkButton href={`https://github.com/${data.full_name}`} external variant="outline">
+                <ArrowSquareOutIcon />
                 Open on GitHub
               </LinkButton>
             }

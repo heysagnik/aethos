@@ -1,12 +1,14 @@
-import { Badge, Banner, LinkButton, Surface, Text } from "@cloudflare/kumo";
 import {
   GitPullRequestIcon,
-  MagnifyingGlassIcon,
   SealCheckIcon,
-  StackIcon,
 } from "@phosphor-icons/react";
 import { useSearchParams } from "react-router-dom";
+import { LinkButton } from "../components/AppLink";
 import { Brand } from "../components/Brand";
+import { Surface } from "../components/Surface";
+import { Text } from "../components/Text";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { GitHubIcon } from "../components/GitHubIcon";
 import { LOGIN_URL } from "../lib/links";
 import { useMe } from "../lib/queries";
@@ -34,34 +36,12 @@ const STEPS = [
   },
 ] as const;
 
-const REASONS = [
-  {
-    icon: StackIcon,
-    title: "Indexed, not re-read",
-    body: "Your code is parsed once into symbols and dependencies, then updated only for the files that change.",
-  },
-  {
-    icon: MagnifyingGlassIcon,
-    title: "Only the relevant context",
-    body: "Each review gets the changed code plus its callers, callees and tests, not the whole repository.",
-  },
-  {
-    icon: SealCheckIcon,
-    title: "A verdict you can explain",
-    body: "Readiness comes from findings, CI status, conflicts and test coverage, and every reason is listed.",
-  },
-] as const;
-
-function SignInButton({ size = "lg" }: { size?: "base" | "lg" }) {
+function SignInButton({ size = "lg" }: { size?: "default" | "lg" }) {
   const me = useMe();
   const signedIn = me.isSuccess;
   return (
-    <LinkButton
-      href={signedIn ? "/app" : LOGIN_URL}
-      variant="primary"
-      size={size}
-      icon={<GitHubIcon />}
-    >
+    <LinkButton href={signedIn ? "/app" : LOGIN_URL} size={size}>
+      <GitHubIcon />
       {signedIn ? "Open dashboard" : "Sign in with GitHub"}
     </LinkButton>
   );
@@ -75,10 +55,15 @@ export function LandingPage() {
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-16 px-6 py-6 md:px-8">
       <nav className="flex items-center justify-between" aria-label="Main">
         <Brand />
-        <SignInButton size="base" />
+        <SignInButton size="default" />
       </nav>
 
-      {error ? <Banner variant="error" title="Something went wrong" description={error} /> : null}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertTitle>Something went wrong</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <header className="flex flex-col items-start gap-6 pt-2">
         <Badge variant="outline">Pull request reviews for GitHub</Badge>
@@ -136,7 +121,7 @@ export function LandingPage() {
         <div className="grid gap-4 md:grid-cols-3">
           {STEPS.map((step, index) => (
             <Surface key={step.title} className="flex flex-col gap-2 px-5 py-4">
-              <step.icon size={24} className="text-kumo-brand" aria-hidden="true" />
+              <step.icon size={24} className="text-orange-500" aria-hidden="true" />
               <Text bold>
                 {index + 1}. {step.title}
               </Text>
@@ -147,36 +132,6 @@ export function LandingPage() {
           ))}
         </div>
       </section>
-
-      <section className="flex flex-col gap-6" aria-labelledby="why-title">
-        <Text variant="heading2" as="h2" id="why-title">
-          Fast and inexpensive by design
-        </Text>
-        <div className="grid gap-4 md:grid-cols-3">
-          {REASONS.map((reason) => (
-            <Surface key={reason.title} className="flex flex-col gap-2 px-5 py-4">
-              <reason.icon size={24} className="text-kumo-brand" aria-hidden="true" />
-              <Text bold>{reason.title}</Text>
-              <Text variant="secondary" size="sm">
-                {reason.body}
-              </Text>
-            </Surface>
-          ))}
-        </div>
-      </section>
-
-      <section className="flex flex-col items-start gap-4 pb-8" aria-label="Get started">
-        <Text variant="heading2" as="h2">
-          Add Aethos to your next pull request.
-        </Text>
-        <SignInButton />
-      </section>
-
-      <footer className="border-t border-kumo-hairline py-6">
-        <Text variant="secondary" size="sm">
-          Aethos only comments on pull requests. It never approves, merges or changes your code.
-        </Text>
-      </footer>
     </div>
   );
 }

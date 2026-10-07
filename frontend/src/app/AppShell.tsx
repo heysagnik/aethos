@@ -1,4 +1,3 @@
-import { Banner, Button, Empty, Loader, Select, Sidebar, Text } from "@cloudflare/kumo";
 import {
   FolderSimpleIcon,
   GitPullRequestIcon,
@@ -7,13 +6,43 @@ import {
   SquaresFourIcon,
 } from "@phosphor-icons/react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { AppLink } from "../components/AppLink";
 import { Brand } from "../components/Brand";
 import { GitHubIcon } from "../components/GitHubIcon";
+import { SimpleSelect } from "../components/SimpleSelect";
+import { Text } from "../components/Text";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Spinner } from "@/components/ui/spinner";
 import { ApiError, type Workspace } from "../lib/api";
 import { INSTALL_URL, LOGIN_URL } from "../lib/links";
 import { useLogout, useMe, useWorkspaces } from "../lib/queries";
 import { useWorkspaceSlug, workspacePath } from "../lib/workspace";
 import { NotFoundPage } from "../pages/NotFoundPage";
+
+const COLLAPSED_HIDDEN = "group-data-[collapsible=icon]:hidden";
 
 function FullPage({ children }: { children: React.ReactNode }) {
   return (
@@ -26,8 +55,8 @@ function FullPage({ children }: { children: React.ReactNode }) {
 function Loading() {
   return (
     <FullPage>
-      <div role="status" aria-label="Loading">
-        <Loader size={28} />
+      <div role="status" aria-label="Loading" className="flex justify-center">
+        <Spinner className="size-7" />
       </div>
     </FullPage>
   );
@@ -36,16 +65,21 @@ function Loading() {
 function SignIn() {
   return (
     <FullPage>
-      <Empty
-        icon={<GitHubIcon size={48} />}
-        title="Sign in to Aethos"
-        description="Use your GitHub account to see the repositories and pull requests Aethos reviews for you."
-        contents={
-          <Button variant="primary" onClick={() => window.location.assign(LOGIN_URL)}>
-            Continue with GitHub
-          </Button>
-        }
-      />
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <GitHubIcon size={24} />
+          </EmptyMedia>
+          <EmptyTitle>Sign in to Aethos</EmptyTitle>
+          <EmptyDescription>
+            Use your GitHub account to see the repositories and pull requests Aethos reviews for
+            you.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button onClick={() => window.location.assign(LOGIN_URL)}>Continue with GitHub</Button>
+        </EmptyContent>
+      </Empty>
     </FullPage>
   );
 }
@@ -54,21 +88,23 @@ function Onboarding({ login }: { login: string }) {
   const logout = useLogout();
   return (
     <FullPage>
-      <Empty
-        icon={<GitHubIcon size={48} />}
-        title="Install Aethos on a GitHub account"
-        description={`You are signed in as ${login}. Choose a personal account or an organization, then pick the repositories Aethos may review. Each account becomes its own workspace.`}
-        contents={
-          <div className="flex items-center gap-2">
-            <Button variant="primary" onClick={() => window.location.assign(INSTALL_URL)}>
-              Install on GitHub
-            </Button>
-            <Button variant="ghost" loading={logout.isPending} onClick={() => logout.mutate()}>
-              Sign out
-            </Button>
-          </div>
-        }
-      />
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <GitHubIcon size={24} />
+          </EmptyMedia>
+          <EmptyTitle>Install Aethos on a GitHub account</EmptyTitle>
+          <EmptyDescription>
+            {`You are signed in as ${login}. Choose a personal account or an organization, then pick the repositories Aethos may review. Each account becomes its own workspace.`}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent className="flex-row justify-center">
+          <Button onClick={() => window.location.assign(INSTALL_URL)}>Install on GitHub</Button>
+          <Button variant="ghost" disabled={logout.isPending} onClick={() => logout.mutate()}>
+            Sign out
+          </Button>
+        </EmptyContent>
+      </Empty>
     </FullPage>
   );
 }
@@ -78,60 +114,60 @@ function WorkspaceSwitcher({ workspaces, current }: { workspaces: Workspace[]; c
   const items: Record<string, string> = {};
   for (const workspace of workspaces) items[workspace.login] = workspace.login;
   return (
-    <Sidebar.Group>
-      <Sidebar.GroupLabel>Workspace</Sidebar.GroupLabel>
-      <div className="px-1 pb-1">
-        <Select
+    <SidebarGroup>
+      <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+      <div className={`px-1 pb-1 ${COLLAPSED_HIDDEN}`}>
+        <SimpleSelect
           aria-label="Workspace"
-          className="w-full"
           value={current}
           items={items}
-          onValueChange={(value) => {
-            if (value) navigate(workspacePath(String(value)));
-          }}
+          onValueChange={(value) => navigate(workspacePath(value))}
         />
       </div>
-      <Sidebar.Menu>
-        <Sidebar.MenuButton
-          icon={PlusIcon}
-          tooltip="Add GitHub account"
-          onClick={() => window.location.assign(INSTALL_URL)}
-        >
-          Add GitHub account
-        </Sidebar.MenuButton>
-      </Sidebar.Menu>
-    </Sidebar.Group>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            tooltip="Add GitHub account"
+            onClick={() => window.location.assign(INSTALL_URL)}
+          >
+            <PlusIcon />
+            <span>Add GitHub account</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarGroup>
   );
 }
 
 function UserRow({ login, avatarUrl }: { login: string; avatarUrl: string }) {
   const logout = useLogout();
   return (
-    <div className="flex w-full min-w-0 items-center gap-2 px-2">
+    <div className="flex w-full min-w-0 items-center gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
       {avatarUrl ? (
         <img src={avatarUrl} alt="" className="size-6 shrink-0 rounded-full" />
       ) : (
         <span
           aria-hidden="true"
-          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-kumo-recessed text-xs font-medium text-kumo-default"
+          className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium"
         >
           {login.slice(0, 1).toUpperCase()}
         </span>
       )}
-      <div className="min-w-0 flex-1">
-        <Text size="sm" truncate>
+      <div className={`min-w-0 flex-1 ${COLLAPSED_HIDDEN}`}>
+        <Text size="sm" truncate className="block">
           {login}
         </Text>
       </div>
       <Button
+        className={COLLAPSED_HIDDEN}
         variant="ghost"
-        shape="square"
-        size="sm"
+        size="icon-sm"
         aria-label="Sign out"
-        icon={<SignOutIcon />}
-        loading={logout.isPending}
+        disabled={logout.isPending}
         onClick={() => logout.mutate()}
-      />
+      >
+        <SignOutIcon />
+      </Button>
     </div>
   );
 }
@@ -147,7 +183,10 @@ export function AppShell() {
     if (me.error instanceof ApiError && me.error.status === 401) return <SignIn />;
     return (
       <div className="px-6 py-5">
-        <Banner variant="error" title="Could not load your account" description={me.error.message} />
+        <Alert variant="destructive">
+          <AlertTitle>Could not load your account</AlertTitle>
+          <AlertDescription>{me.error.message}</AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -155,11 +194,10 @@ export function AppShell() {
   if (workspaces.isError) {
     return (
       <div className="px-6 py-5">
-        <Banner
-          variant="error"
-          title="Could not load your workspaces"
-          description={workspaces.error.message}
-        />
+        <Alert variant="destructive">
+          <AlertTitle>Could not load your workspaces</AlertTitle>
+          <AlertDescription>{workspaces.error.message}</AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -190,45 +228,50 @@ export function AppShell() {
   ];
 
   return (
-    <Sidebar.Provider defaultOpen contained className="h-screen min-h-0!">
-      <Sidebar>
-        <Sidebar.Header>
-          <div className="flex w-full items-center justify-between gap-2">
+    <SidebarProvider defaultOpen className="fixed inset-0 h-auto min-h-0 overflow-hidden">
+      <Sidebar collapsible="icon">
+        <SidebarHeader className="h-[58px] flex-row items-center justify-between gap-2 border-b px-3 py-0">
+          <div className={COLLAPSED_HIDDEN}>
             <Brand />
-            <Sidebar.Trigger />
           </div>
-        </Sidebar.Header>
-        <Sidebar.Content>
+          <SidebarTrigger />
+        </SidebarHeader>
+        <SidebarContent>
           <WorkspaceSwitcher workspaces={list} current={current?.login ?? ""} />
-          <Sidebar.Group>
-            <Sidebar.GroupLabel>Manage</Sidebar.GroupLabel>
-            <Sidebar.Menu>
+          <SidebarGroup>
+            <SidebarGroupLabel>Manage</SidebarGroupLabel>
+            <SidebarMenu>
               {nav.map((item) => (
-                <Sidebar.MenuButton
-                  key={item.href}
-                  icon={item.icon}
-                  href={item.href}
-                  active={item.active}
-                  tooltip={item.label}
-                >
-                  {item.label}
-                </Sidebar.MenuButton>
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={item.active}
+                    tooltip={item.label}
+                    render={<AppLink href={item.href} />}
+                  >
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               ))}
-            </Sidebar.Menu>
-          </Sidebar.Group>
-        </Sidebar.Content>
-        <Sidebar.Footer>
+            </SidebarMenu>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="border-t">
           <UserRow login={me.data.login} avatarUrl={me.data.avatar_url} />
-        </Sidebar.Footer>
+        </SidebarFooter>
       </Sidebar>
-      <main className="h-full min-w-0 flex-1 overflow-y-auto px-5 py-6 md:px-10 md:py-10">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+      <SidebarInset className="h-full min-h-0 min-w-0 overflow-hidden">
+        <div className="flex h-[58px] shrink-0 items-center border-b bg-background px-5 md:px-10">
           <div className="md:hidden">
-            <Sidebar.Trigger />
+            <SidebarTrigger />
           </div>
-          {current ? <Outlet /> : <NotFoundPage />}
         </div>
-      </main>
-    </Sidebar.Provider>
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-6 md:px-10 md:py-8">
+            {current ? <Outlet /> : <NotFoundPage />}
+          </div>
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

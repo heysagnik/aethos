@@ -1,4 +1,6 @@
-import { Banner, Button, Loader } from "@cloudflare/kumo";
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -12,22 +14,21 @@ export function QueryBoundary<T>({ query, children }: QueryBoundaryProps<T>) {
   if (query.isPending) {
     return (
       <div className="flex justify-center py-16" role="status" aria-label="Loading">
-        <Loader size={24} />
+        <Spinner className="size-6" />
       </div>
     );
   }
   if (query.isError) {
     return (
-      <Banner
-        variant="error"
-        title="Something went wrong"
-        description={query.error.message}
-        action={
+      <Alert variant="destructive">
+        <AlertTitle>Something went wrong</AlertTitle>
+        <AlertDescription>{query.error.message}</AlertDescription>
+        <AlertAction>
           <Button size="sm" onClick={() => void query.refetch()}>
             Try again
           </Button>
-        }
-      />
+        </AlertAction>
+      </Alert>
     );
   }
   return <>{children(query.data)}</>;

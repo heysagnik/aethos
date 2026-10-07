@@ -1,4 +1,5 @@
-import { Surface, Text } from "@cloudflare/kumo";
+import { Surface } from "./Surface";
+import { Text } from "./Text";
 
 interface StatCardProps {
   label: string;

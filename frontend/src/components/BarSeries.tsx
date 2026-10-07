@@ -1,4 +1,4 @@
-import { Text } from "@cloudflare/kumo";
+import { Text } from "./Text";
 
 export interface BarPoint {
   label: string;
@@ -10,12 +10,12 @@ interface BarSeriesProps {
   ariaLabel: string;
 }
 
-/** A tiny, dependency-free bar series built from Kumo tokens. */
+/** A tiny, dependency-free bar series built from theme tokens. */
 export function BarSeries({ points, ariaLabel }: BarSeriesProps) {
   const max = Math.max(0, ...points.map((p) => p.value));
   if (max === 0) {
     return (
-      <div className="flex h-28 items-center justify-center rounded-md bg-kumo-recessed">
+      <div className="flex h-28 items-center justify-center rounded-md bg-muted">
         <Text variant="secondary" size="sm">
           No reviews in this period
         </Text>
@@ -31,7 +31,7 @@ export function BarSeries({ points, ariaLabel }: BarSeriesProps) {
           title={`${point.label}: ${point.value}`}
         >
           <div
-            className={`w-full max-w-4 rounded-sm ${point.value > 0 ? "bg-kumo-brand" : "bg-kumo-hairline"}`}
+            className={`w-full max-w-4 rounded-sm ${point.value > 0 ? "bg-primary" : "bg-border"}`}
             style={{ height: point.value > 0 ? `${Math.max(8, (point.value / max) * 100)}%` : "2px" }}
           />
         </div>

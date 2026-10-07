@@ -1,4 +1,4 @@
-import { Text } from "@cloudflare/kumo";
+import { Text } from "./Text";
 import type { ReactNode } from "react";
 
 interface PageHeaderProps {
@@ -16,7 +16,7 @@ export function PageHeader({ title, description, actions, leading }: PageHeaderP
         <Text variant="heading" size="lg" as="h1">
           {title}
         </Text>
-        {description ? <Text variant="secondary">{description}</Text> : null}
+        {description ? <Text variant="secondary" size="sm">{description}</Text> : null}
       </div>
       {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
     </header>

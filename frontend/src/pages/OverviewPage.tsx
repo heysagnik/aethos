@@ -1,5 +1,19 @@
-import { Badge, Button, Empty, Meter, Surface, Tabs, Text } from "@cloudflare/kumo";
 import { useState } from "react";
+import { MeterBar } from "../components/MeterBar";
+import { Surface } from "../components/Surface";
+import { Text } from "../components/Text";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { GitHubIcon } from "../components/GitHubIcon";
 import { BarSeries, fillDays } from "../components/BarSeries";
 import { PageHeader } from "../components/PageHeader";
@@ -18,10 +32,10 @@ const RANGES = [
 ];
 
 const VERDICT_ROWS = [
-  { key: "ready", label: "Ready to merge", variant: "success", bar: "bg-kumo-success" },
-  { key: "ready_with_suggestions", label: "Ready, with suggestions", variant: "info", bar: "bg-kumo-info" },
-  { key: "not_ready", label: "Not ready", variant: "error", bar: "bg-kumo-danger" },
-  { key: "inconclusive", label: "Inconclusive", variant: "neutral", bar: "bg-kumo-line" },
+  { key: "ready", label: "Ready to merge", tone: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" },
+  { key: "ready_with_suggestions", label: "Ready, with suggestions", tone: "bg-sky-500/15 text-sky-600 dark:text-sky-400", bar: "bg-sky-500" },
+  { key: "not_ready", label: "Not ready", tone: "bg-destructive/15 text-destructive", bar: "bg-destructive" },
+  { key: "inconclusive", label: "Inconclusive", tone: "bg-muted text-muted-foreground", bar: "bg-muted-foreground/40" },
 ] as const;
 
 export function OverviewPage() {
@@ -37,27 +51,34 @@ export function OverviewPage() {
         title="Overview"
         description="How Aethos is reviewing your pull requests."
         actions={
-          <Tabs
-            variant="segmented"
-            size="sm"
-            tabs={RANGES}
-            value={String(days)}
-            onValueChange={(value) => setDays(Number(value))}
-          />
+          <Tabs value={String(days)} onValueChange={(value) => setDays(Number(value))}>
+            <TabsList>
+              {RANGES.map((range) => (
+                <TabsTrigger key={range.value} value={range.value}>
+                  {range.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         }
       />
       {repos.data && repos.data.length === 0 ? (
         <Surface className="p-2">
-          <Empty
-            icon={<GitHubIcon size={40} />}
-            title="No repositories yet"
-            description="Choose repositories for this account on GitHub, then comment @aethos-agent on a pull request."
-            contents={
-              <Button variant="primary" onClick={() => window.location.assign(INSTALL_URL)}>
-                Add repositories
-              </Button>
-            }
-          />
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <GitHubIcon size={24} />
+              </EmptyMedia>
+              <EmptyTitle>No repositories yet</EmptyTitle>
+              <EmptyDescription>
+                Choose repositories for this account on GitHub, then comment @aethos-agent on a pull
+                request.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => window.location.assign(INSTALL_URL)}>Add repositories</Button>
+            </EmptyContent>
+          </Empty>
         </Surface>
       ) : (
         <QueryBoundary query={overview}>
@@ -90,17 +111,19 @@ export function OverviewPage() {
                     {VERDICT_ROWS.map((row) => (
                       <div key={row.key} className="flex flex-col gap-1">
                         <div className="flex items-center justify-between">
-                          <Badge variant={row.variant}>{row.label}</Badge>
+                          <Badge variant="secondary" className={row.tone}>
+                            {row.label}
+                          </Badge>
                           <Text variant="secondary" size="sm">
                             {data.verdicts[row.key]}
                           </Text>
                         </div>
                         <div
-                          className="h-1.5 w-full overflow-hidden rounded-full bg-kumo-recessed"
+                          className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
                           role="presentation"
                         >
                           <div
-                            className={`h-full rounded-full ${row.bar}`}
+                            className={cn("h-full rounded-full", row.bar)}
                             style={{ width: `${(100 * data.verdicts[row.key]) / postedTotal}%` }}
                           />
                         </div>
@@ -124,10 +147,10 @@ export function OverviewPage() {
                           code index saves. See the README for the compare command.
                         </Text>
                       ) : (
-                        <Meter
+                        <MeterBar
                           label="Input tokens saved vs. baseline"
                           value={Math.max(0, data.savings.saved_pct)}
-                          customValue={`${data.savings.saved_pct}%`}
+                          valueText={`${data.savings.saved_pct}%`}
                         />
                       )}
                       {data.savings.pairs > 0 ? (

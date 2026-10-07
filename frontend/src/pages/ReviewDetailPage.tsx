@@ -1,15 +1,13 @@
-import {
-  Badge,
-  Banner,
-  Collapsible,
-  LinkButton,
-  Meter,
-  Surface,
-  Table,
-  Text,
-} from "@cloudflare/kumo";
-import { ArrowSquareOutIcon } from "@phosphor-icons/react";
+import { ArrowSquareOutIcon, CaretDownIcon } from "@phosphor-icons/react";
 import { useParams } from "react-router-dom";
+import { LinkButton } from "../components/AppLink";
+import { MeterBar } from "../components/MeterBar";
+import { Surface } from "../components/Surface";
+import { Text } from "../components/Text";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SeverityBadge, StatusBadge, VerdictBadge } from "../components/Badges";
 import { BackLink } from "../components/BackLink";
 import { PageHeader } from "../components/PageHeader";
@@ -36,7 +34,7 @@ function FindingCard({ finding }: { finding: Finding }) {
       </Text>
       <Text variant="secondary">{finding.body}</Text>
       {finding.suggestion ? (
-        <pre className="overflow-x-auto rounded-md bg-kumo-recessed p-3 text-xs text-kumo-default">
+        <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">
           {finding.suggestion}
         </pre>
       ) : null}
@@ -76,42 +74,52 @@ function Findings({ review }: { review: ReviewDetail }) {
   );
 }
 
+function SectionTrigger({ children }: { children: React.ReactNode }) {
+  return (
+    <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 text-left text-sm font-medium">
+      {children}
+      <CaretDownIcon size={14} aria-hidden="true" />
+    </CollapsibleTrigger>
+  );
+}
+
 function PackInspector({ review }: { review: ReviewDetail }) {
   const pack = parsePack(review.pack);
   if (!pack) return <Text variant="secondary">No context pack was built for this review.</Text>;
   const groups = groupBySection(pack.items);
   return (
     <div className="flex flex-col gap-4">
-      <Meter
+      <MeterBar
         label="Context used"
         value={pack.tokensUsed}
         max={Math.max(pack.budget, 1)}
-        customValue={`${formatNumber(pack.tokensUsed)} / ${formatNumber(pack.budget)} tokens`}
+        valueText={`${formatNumber(pack.tokensUsed)} / ${formatNumber(pack.budget)} tokens`}
       />
       {!pack.indexUsed ? (
-        <Banner
-          variant="alert"
-          title="No code index was used"
-          description="This review only saw the diff. Set up indexing on the repository page for richer context."
-          size="sm"
-        />
+        <Alert>
+          <AlertTitle>No code index was used</AlertTitle>
+          <AlertDescription>
+            This review only saw the diff. Set up indexing on the repository page for richer context.
+          </AlertDescription>
+        </Alert>
       ) : null}
       {!pack.diffComplete ? (
-        <Banner
-          variant="alert"
-          title="Part of the diff was not reviewed"
-          description="Some changes did not fit the context budget. Raise the budget or review a smaller pull request."
-          size="sm"
-        />
+        <Alert>
+          <AlertTitle>Part of the diff was not reviewed</AlertTitle>
+          <AlertDescription>
+            Some changes did not fit the context budget. Raise the budget or review a smaller pull
+            request.
+          </AlertDescription>
+        </Alert>
       ) : null}
       {groups.map(([section, items]) => (
-        <Collapsible.Root key={section} defaultOpen={section === "symbols" || section === "related"}>
-          <Collapsible.DefaultTrigger>
+        <Collapsible key={section} defaultOpen={section === "symbols" || section === "related"}>
+          <SectionTrigger>
             {SECTION_LABELS[section] ?? section} · {items.length} item(s) ·{" "}
             {formatNumber(items.reduce((sum, item) => sum + item.tokens, 0))} tokens
-          </Collapsible.DefaultTrigger>
-          <Collapsible.DefaultPanel>
-            <div className="flex flex-col gap-2">
+          </SectionTrigger>
+          <CollapsibleContent>
+            <div className="flex flex-col gap-2 pt-2">
               {items.map((item) => (
                 <div key={item.title} className="flex flex-col gap-1">
                   <Text size="sm" bold>
@@ -123,16 +131,16 @@ function PackInspector({ review }: { review: ReviewDetail }) {
                 </div>
               ))}
             </div>
-          </Collapsible.DefaultPanel>
-        </Collapsible.Root>
+          </CollapsibleContent>
+        </Collapsible>
       ))}
       {pack.dropped.length > 0 ? (
-        <Collapsible.Root>
-          <Collapsible.DefaultTrigger>
+        <Collapsible>
+          <SectionTrigger>
             Left out to stay within budget · {pack.dropped.length} item(s)
-          </Collapsible.DefaultTrigger>
-          <Collapsible.DefaultPanel>
-            <div className="flex flex-col gap-2">
+          </SectionTrigger>
+          <CollapsibleContent>
+            <div className="flex flex-col gap-2 pt-2">
               {pack.dropped.map((item) => (
                 <Text key={`${item.section}:${item.title}`} variant="secondary" size="sm">
                   {item.title} ({SECTION_LABELS[item.section] ?? item.section}, {item.reason},{" "}
@@ -140,8 +148,8 @@ function PackInspector({ review }: { review: ReviewDetail }) {
                 </Text>
               ))}
             </div>
-          </Collapsible.DefaultPanel>
-        </Collapsible.Root>
+          </CollapsibleContent>
+        </Collapsible>
       ) : null}
     </div>
   );
@@ -152,28 +160,28 @@ function Usage({ review }: { review: ReviewDetail }) {
   return (
     <Surface className="overflow-x-auto">
       <Table>
-        <Table.Header>
-          <Table.Row>
-            <Table.Head>Step</Table.Head>
-            <Table.Head>Model</Table.Head>
-            <Table.Head>Tokens in</Table.Head>
-            <Table.Head>Tokens out</Table.Head>
-            <Table.Head>Cost</Table.Head>
-            <Table.Head>Time</Table.Head>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Step</TableHead>
+            <TableHead>Model</TableHead>
+            <TableHead>Tokens in</TableHead>
+            <TableHead>Tokens out</TableHead>
+            <TableHead>Cost</TableHead>
+            <TableHead>Time</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {review.usage.map((row, index) => (
-            <Table.Row key={`${row.step}-${index}`}>
-              <Table.Cell>{row.step}</Table.Cell>
-              <Table.Cell>{row.model}</Table.Cell>
-              <Table.Cell>{formatNumber(row.tokens_in)}</Table.Cell>
-              <Table.Cell>{formatNumber(row.tokens_out)}</Table.Cell>
-              <Table.Cell>{formatCost(row.cost_usd)}</Table.Cell>
-              <Table.Cell>{formatDuration(row.duration_ms)}</Table.Cell>
-            </Table.Row>
+            <TableRow key={`${row.step}-${index}`}>
+              <TableCell>{row.step}</TableCell>
+              <TableCell>{row.model}</TableCell>
+              <TableCell>{formatNumber(row.tokens_in)}</TableCell>
+              <TableCell>{formatNumber(row.tokens_out)}</TableCell>
+              <TableCell>{formatCost(row.cost_usd)}</TableCell>
+              <TableCell>{formatDuration(row.duration_ms)}</TableCell>
+            </TableRow>
           ))}
-        </Table.Body>
+        </TableBody>
       </Table>
     </Surface>
   );
@@ -193,7 +201,8 @@ export function ReviewDetailPage() {
             title={`${data.repo}#${data.pr_number}`}
             description={data.pr_title}
             actions={
-              <LinkButton href={data.pr_url} external icon={<ArrowSquareOutIcon />}>
+              <LinkButton href={data.pr_url} external variant="outline">
+                <ArrowSquareOutIcon />
                 Open pull request
               </LinkButton>
             }

@@ -1,7 +1,25 @@
-import { Badge } from "@cloudflare/kumo";
-import type { ComponentProps } from "react";
+import type { ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-type Variant = ComponentProps<typeof Badge>["variant"];
+type Variant = "success" | "info" | "error" | "warning" | "neutral" | "secondary";
+
+const TONES: Record<Variant, string> = {
+  success: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  info: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+  error: "bg-destructive/15 text-destructive",
+  warning: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  neutral: "bg-muted text-muted-foreground",
+  secondary: "bg-secondary text-secondary-foreground",
+};
+
+function Tone({ variant, children }: { variant: Variant; children: ReactNode }) {
+  return (
+    <Badge variant="secondary" className={cn(TONES[variant])}>
+      {children}
+    </Badge>
+  );
+}
 
 interface Descriptor {
   label: string;
@@ -47,19 +65,19 @@ export function verdictLabel(verdict: string): string {
 
 export function VerdictBadge({ verdict }: { verdict: string }) {
   const entry = VERDICTS[verdict];
-  return <Badge variant={entry?.variant ?? "secondary"}>{entry?.label ?? "No verdict"}</Badge>;
+  return <Tone variant={entry?.variant ?? "secondary"}>{entry?.label ?? "No verdict"}</Tone>;
 }
 
 export function StatusBadge({ status }: { status: string }) {
   const entry = STATUSES[status] ?? { label: status, variant: "secondary" as Variant };
-  return <Badge variant={entry.variant}>{entry.label}</Badge>;
+  return <Tone variant={entry.variant}>{entry.label}</Tone>;
 }
 
 export function IndexStatusBadge({ status }: { status: string }) {
   const entry = INDEX_STATUSES[status] ?? { label: status, variant: "secondary" as Variant };
-  return <Badge variant={entry.variant}>{entry.label}</Badge>;
+  return <Tone variant={entry.variant}>{entry.label}</Tone>;
 }
 
 export function SeverityBadge({ severity }: { severity: string }) {
-  return <Badge variant={SEVERITIES[severity] ?? "neutral"}>{severity}</Badge>;
+  return <Tone variant={SEVERITIES[severity] ?? "neutral"}>{severity}</Tone>;
 }

@@ -1,5 +1,6 @@
-import { Button, Select } from "@cloudflare/kumo";
 import { useState } from "react";
+import { SimpleSelect } from "../components/SimpleSelect";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
 import { ReviewsTable } from "../components/ReviewsTable";
@@ -24,14 +25,14 @@ export function ReviewsPage() {
         title="Reviews"
         description="Every pull request Aethos has been asked to review."
         actions={
-          <Select
+          <SimpleSelect
             aria-label="Filter by repository"
             className="w-56"
             value={repoId === undefined ? "all" : String(repoId)}
             items={items}
             onValueChange={(value) => {
               setLimit(PAGE_SIZE);
-              setRepoId(value === null || value === "all" ? undefined : Number(value));
+              setRepoId(value === "all" ? undefined : Number(value));
             }}
           />
         }
@@ -43,7 +44,9 @@ export function ReviewsPage() {
               <ReviewsTable reviews={rows} />
             </div>
             {rows.length >= limit ? (
-              <Button onClick={() => setLimit((current) => current + PAGE_SIZE)}>Show more</Button>
+              <Button variant="outline" onClick={() => setLimit((current) => current + PAGE_SIZE)}>
+                Show more
+              </Button>
             ) : null}
           </div>
         )}
