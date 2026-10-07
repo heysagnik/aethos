@@ -85,7 +85,7 @@ export function OverviewPage() {
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <Surface className="flex flex-col gap-4 px-4 py-3">
+                  <Surface className="flex flex-col justify-between gap-4 px-5 py-4">
                     <Text variant="heading">Verdicts</Text>
                     {VERDICT_ROWS.map((row) => (
                       <div key={row.key} className="flex flex-col gap-1">
@@ -108,15 +108,15 @@ export function OverviewPage() {
                     ))}
                   </Surface>
 
-                  <div className="flex flex-col gapx-4 py-3">
-                    <Surface className="flex flex-col gap-3 px-4 py-3">
+                  <div className="flex flex-col gap-4">
+                    <Surface className="flex flex-col gap-3 px-5 py-4">
                       <Text variant="heading">Reviews per day</Text>
                       <BarSeries
                         ariaLabel="Reviews per day"
                         points={fillDays(data.series, days)}
                       />
                     </Surface>
-                    <Surface className="flex flex-col gap-3 px-4 py-3">
+                    <Surface className="flex flex-col gap-3 px-5 py-4">
                       <Text variant="heading">Context savings</Text>
                       {data.savings.saved_pct === null ? (
                         <Text variant="secondary" size="sm">
@@ -141,7 +141,7 @@ export function OverviewPage() {
                   </div>
                 </div>
 
-                <section className="flex flex-col gap-3">
+                <section className="flex flex-col gap-4">
                   <Text variant="heading">Recent reviews</Text>
                   <QueryBoundary query={recent}>
                     {(reviews) => <ReviewsTable reviews={reviews} />}

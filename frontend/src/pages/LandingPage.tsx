@@ -72,7 +72,7 @@ export function LandingPage() {
   const error = ERRORS[params.get("error") ?? ""];
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-20 px-6 py-6">
+    <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-16 px-6 py-6 md:px-8">
       <nav className="flex items-center justify-between" aria-label="Main">
         <Brand />
         <SignInButton size="base" />
@@ -80,10 +80,10 @@ export function LandingPage() {
 
       {error ? <Banner variant="error" title="Something went wrong" description={error} /> : null}
 
-      <header className="flex flex-col items-start gap-6 pt-6">
+      <header className="flex flex-col items-start gap-6 pt-2">
         <Badge variant="outline">Pull request reviews for GitHub</Badge>
         <div className="flex max-w-2xl flex-col gap-3">
-          <Text variant="heading" size="lg" as="h1">
+          <Text variant="heading1" as="h1">
             Know if a pull request is ready to merge.
           </Text>
           <Text variant="secondary">
@@ -130,7 +130,7 @@ export function LandingPage() {
       </section>
 
       <section id="how" className="flex flex-col gap-6" aria-labelledby="how-title">
-        <Text variant="heading" size="lg" as="h2" id="how-title">
+        <Text variant="heading2" as="h2" id="how-title">
           How it works
         </Text>
         <div className="grid gap-4 md:grid-cols-3">
@@ -149,7 +149,7 @@ export function LandingPage() {
       </section>
 
       <section className="flex flex-col gap-6" aria-labelledby="why-title">
-        <Text variant="heading" size="lg" as="h2" id="why-title">
+        <Text variant="heading2" as="h2" id="why-title">
           Fast and inexpensive by design
         </Text>
         <div className="grid gap-4 md:grid-cols-3">
@@ -166,7 +166,7 @@ export function LandingPage() {
       </section>
 
       <section className="flex flex-col items-start gap-4 pb-8" aria-label="Get started">
-        <Text variant="heading" size="lg" as="h2">
+        <Text variant="heading2" as="h2">
           Add Aethos to your next pull request.
         </Text>
         <SignInButton />

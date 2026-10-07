@@ -11,6 +11,7 @@ import {
 import { ArrowSquareOutIcon } from "@phosphor-icons/react";
 import { useParams } from "react-router-dom";
 import { SeverityBadge, StatusBadge, VerdictBadge } from "../components/Badges";
+import { BackLink } from "../components/BackLink";
 import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
 import type { Finding, ReviewDetail } from "../lib/api";
@@ -20,7 +21,7 @@ import { useReview } from "../lib/queries";
 
 function FindingCard({ finding }: { finding: Finding }) {
   return (
-    <Surface className="flex flex-col gap-2 px-4 py-3">
+    <Surface className="flex flex-col gap-2 px-5 py-4">
       <div className="flex flex-wrap items-center gap-2">
         <SeverityBadge severity={finding.severity} />
         <Badge variant="outline">{finding.category}</Badge>
@@ -56,7 +57,7 @@ function Findings({ review }: { review: ReviewDetail }) {
   return (
     <div className="flex flex-col gap-6">
       {bottlenecks.length > 0 ? (
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-4">
           <Text variant="heading">Bottlenecks</Text>
           {bottlenecks.map((f) => (
             <FindingCard key={`${f.path}:${f.line}:${f.title}`} finding={f} />
@@ -64,7 +65,7 @@ function Findings({ review }: { review: ReviewDetail }) {
         </section>
       ) : null}
       {others.length > 0 ? (
-        <section className="flex flex-col gap-3">
+        <section className="flex flex-col gap-4">
           <Text variant="heading">Findings</Text>
           {others.map((f) => (
             <FindingCard key={`${f.path}:${f.line}:${f.title}`} finding={f} />
@@ -80,7 +81,7 @@ function PackInspector({ review }: { review: ReviewDetail }) {
   if (!pack) return <Text variant="secondary">No context pack was built for this review.</Text>;
   const groups = groupBySection(pack.items);
   return (
-    <div className="flex flex-col gapx-4 py-3">
+    <div className="flex flex-col gap-4">
       <Meter
         label="Context used"
         value={pack.tokensUsed}
@@ -188,6 +189,7 @@ export function ReviewDetailPage() {
       {(data) => (
         <>
           <PageHeader
+            leading={<BackLink to="reviews" label="Reviews" />}
             title={`${data.repo}#${data.pr_number}`}
             description={data.pr_title}
             actions={
@@ -197,7 +199,7 @@ export function ReviewDetailPage() {
             }
           />
           <div className="flex flex-col gap-6">
-            <Surface className="flex flex-col gap-3 px-4 py-3">
+            <Surface className="flex flex-col gap-3 px-5 py-4">
               <div className="flex flex-wrap items-center gap-2">
                 <VerdictBadge verdict={data.verdict} />
                 <StatusBadge status={data.status} />
@@ -231,14 +233,14 @@ export function ReviewDetailPage() {
 
             <Findings review={data} />
 
-            <section className="flex flex-col gap-3">
+            <section className="flex flex-col gap-4">
               <Text variant="heading">Context pack</Text>
-              <Surface className="px-4 py-3">
+              <Surface className="px-5 py-4">
                 <PackInspector review={data} />
               </Surface>
             </section>
 
-            <section className="flex flex-col gap-3">
+            <section className="flex flex-col gap-4">
               <Text variant="heading">Model usage</Text>
               <Usage review={data} />
             </section>

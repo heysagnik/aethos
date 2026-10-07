@@ -13,6 +13,7 @@ import { ArrowSquareOutIcon, CopyIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { IndexStatusBadge } from "../components/Badges";
+import { BackLink } from "../components/BackLink";
 import { PageHeader } from "../components/PageHeader";
 import { QueryBoundary } from "../components/QueryBoundary";
 import { ReviewsTable } from "../components/ReviewsTable";
@@ -79,7 +80,7 @@ function SettingsForm({ repo }: { repo: RepoDetail }) {
     });
 
   return (
-    <Surface className="flex flex-col gap-4 px-4 py-3">
+    <Surface className="flex flex-col gap-4 px-5 py-4">
       <Text variant="heading">Review settings</Text>
       <Switch
         label="Respond to @aethos-agent mentions"
@@ -151,7 +152,7 @@ function IndexCard({ repo }: { repo: RepoDetail }) {
       .catch(() => toasts.add({ title: "Could not copy", variant: "error" }));
   };
   return (
-    <Surface className="flex flex-col gap-4 px-4 py-3">
+    <Surface className="flex flex-col gap-4 px-5 py-4">
       <div className="flex items-center justify-between gap-2">
         <Text variant="heading">Code index</Text>
         <IndexStatusBadge status={repo.index_status} />
@@ -212,6 +213,7 @@ export function RepoDetailPage() {
       {(data) => (
         <>
           <PageHeader
+            leading={<BackLink to="repos" label="Repositories" />}
             title={data.full_name}
             description={`${data.is_private ? "Private" : "Public"} repository on ${data.default_branch}`}
             actions={
@@ -227,7 +229,7 @@ export function RepoDetailPage() {
           <div className="flex flex-col gap-6">
             <IndexCard repo={data} />
             <SettingsForm key={data.id} repo={data} />
-            <section className="flex flex-col gap-3">
+            <section className="flex flex-col gap-4">
               <Text variant="heading">Recent reviews</Text>
               <QueryBoundary query={reviews}>
                 {(rows) => <ReviewsTable reviews={rows} showRepo={false} />}

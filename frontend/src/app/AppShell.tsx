@@ -16,7 +16,11 @@ import { useWorkspaceSlug, workspacePath } from "../lib/workspace";
 import { NotFoundPage } from "../pages/NotFoundPage";
 
 function FullPage({ children }: { children: React.ReactNode }) {
-  return <div className="flex min-h-screen items-center justify-center px-6 py-5">{children}</div>;
+  return (
+    <div className="flex min-h-screen items-center justify-center px-6 py-5">
+      <div className="w-full max-w-lg">{children}</div>
+    </div>
+  );
 }
 
 function Loading() {
@@ -74,7 +78,7 @@ function WorkspaceSwitcher({ workspaces, current }: { workspaces: Workspace[]; c
   const items: Record<string, string> = {};
   for (const workspace of workspaces) items[workspace.login] = workspace.login;
   return (
-    <div className="flex flex-col gap-2 px-2">
+    <div className="flex flex-col gap-1">
       <Select
         aria-label="Workspace"
         value={current}
@@ -86,6 +90,7 @@ function WorkspaceSwitcher({ workspaces, current }: { workspaces: Workspace[]; c
       <Button
         variant="ghost"
         size="sm"
+        className="w-full justify-start"
         icon={<PlusIcon />}
         onClick={() => window.location.assign(INSTALL_URL)}
       >
@@ -150,7 +155,7 @@ export function AppShell() {
   ];
 
   return (
-    <Sidebar.Provider defaultOpen contained>
+    <Sidebar.Provider defaultOpen contained className="h-screen">
       <Sidebar>
         <Sidebar.Header>
           <Brand />
@@ -189,8 +194,8 @@ export function AppShell() {
           </div>
         </Sidebar.Footer>
       </Sidebar>
-      <main className="min-w-0 flex-1 px-6 py-5 md:px-8 md:py-6">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6">
+      <main className="h-full min-w-0 flex-1 overflow-y-auto px-5 py-6 md:px-10 md:py-10">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
           <div className="md:hidden">
             <Sidebar.Trigger />
           </div>
